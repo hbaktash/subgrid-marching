@@ -1,0 +1,7 @@
+[submodule "deps/sdf-dataset"]
+	path = deps/sdf-dataset
+	url = https://github.com/GeometryCollective/sdf-dataset.git
+[submodule "deps/geometry-central"]
+	path = deps/geometry-central
+	url = https://github.com/hbaktash/geometry-central.git
+	branch = NonmanifoldTwinConstructor
