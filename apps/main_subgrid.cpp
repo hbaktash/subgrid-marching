@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
     args::ValueFlag<std::string> inputMeshFilename(parser, "inputMesh", "Input mesh file (OBJ, OFF, PLY)", {'i', "input"});
     args::ValueFlag<std::string> inputSDFName(parser, "inputSDF", "Input SDF name (OBJ, OFF, PLY)", {'s', "inputSDF"});
     args::ValueFlag<std::string> outputMeshFilename(parser, "outputMesh", "Output mesh file (OBJ, OFF, PLY)", {'o', "output"});
-    args::ValueFlag<size_t> tetGridResolution(parser, "tetGridResolution", "Grid resolution (e.g., 32, 64, 128 for n^3 grid)", {'r', "tetGridResolution"}, 32);
+    args::ValueFlag<size_t> tetGridResolution(parser, "tetGridResolution", "Grid resolution (e.g., 32, 64, 128 for n^3 grid)", {'r', "tetGridResolution"}, 64);
     args::ValueFlag<double> mergeEPS(parser, "mergeEPS", "Positional merge epsilon; passing this switches from the default combinatorial merge to numerical merge", {"mergeEPS"}, -1);
     args::Flag noMergeFlag(parser, "noMerge", "Disable all vertex merging (output raw triangle soup)", {"noMerge"});
     args::Flag mod2Flag(parser, "mod2", "Use mod2 intersection reduction before subgrid construction", {"mod2"});
@@ -169,7 +169,8 @@ int main(int argc, char** argv) {
     std::cout << " non-even tets:   " << result.non_even_tets  << "/" << result.non_zero_tets << "\n";
     if (result.non_even_tets > 0)
         std::cout << ANSI_FG_YELLOW << " [warning] even-sum condition not satisfied; output might not be orientable and might have open holes."
-                  << " This is likely due to a non-watertight input or a grid edge-intersection issue." << ANSI_RESET << "\n";
+                  << " This is likely due to a non-watertight input or a grid edge-intersection issue. " << "\n"
+                  << " \t IF input is watertight, changing the resolution or the perturbation could help." << ANSI_RESET << "\n";
     std::cout << " output: " << global_soup.vertices.size() << " verts, " << global_soup.faces.size() << " faces\n";
     std::cout << " --------------------------------- \n";
     std::cout << " query: "        << result.isect_time << "s"

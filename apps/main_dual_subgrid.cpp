@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
     args::ValueFlag<std::string> inputMeshFilename(parser, "inputMesh", "Input mesh file (OBJ, OFF, PLY)", {'i', "input"});
     args::ValueFlag<std::string> inputSDFName(parser, "inputSDF", "Input SDF name (OBJ, OFF, PLY)", {'s', "inputSDF"});
     args::ValueFlag<std::string> outputMeshFilename(parser, "outputMesh", "Output mesh file (OBJ, OFF, PLY)", {'o', "output"});
-    args::ValueFlag<size_t> tetGridResolution(parser, "tetGridResolution", "Grid resolution (e.g., 32, 64, 128 for n^3 grid)", {'r', "tetGridResolution"}, 32);
+    args::ValueFlag<size_t> tetGridResolution(parser, "tetGridResolution", "Grid resolution (e.g., 32, 64, 128 for n^3 grid)", {'r', "tetGridResolution"}, 64);
     args::Flag mod2Flag(parser, "mod2", "Use mod2 intersection reduction before dual construction", {"mod2"});
     args::ValueFlag<double> regAlpha(parser, "regAlpha", "Regularization alpha parameter (default: 0.1)", {'a', "alpha"}, 0.1);
     args::Flag projectDuals(parser, "projectDuals", "Project dual vertices to the local grid cell", {"pd", "projectDuals"});
