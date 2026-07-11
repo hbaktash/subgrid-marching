@@ -21,10 +21,10 @@ target_link_libraries(tests
 
 set_property(TARGET tests PROPERTY CXX_STANDARD 17)
 
-set(TEST_DATA_DIR "${CMAKE_SOURCE_DIR}/tests/data/meshes"
+set(TEST_DATA_DIR "${CMAKE_SOURCE_DIR}/data/meshes"
     CACHE PATH "Directory containing mesh files for pipeline tests")
 
-set(TEST_NPZ_DIR "${CMAKE_SOURCE_DIR}/tests/data/npz"
+set(TEST_NPZ_DIR "${CMAKE_SOURCE_DIR}/data/npz"
     CACHE PATH "Directory containing .npz files for explicit-input pipeline tests")
 
 target_compile_definitions(tests PRIVATE

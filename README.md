@@ -19,16 +19,16 @@ under `<dir>/subgrid/`). Run these from the repo root after [building](#building
 
 ```sh
 # 1. Triangle mesh (OBJ / PLY / OFF), extracted on a 64³ grid
-./build/subgrid -i ./tests/data/meshes/spot.obj -r 64 -o ./out/spot.obj
+./build/subgrid -i ./data/meshes/spot.obj -r 64 -o ./out/spot.obj
 
 # 2. Built-in signed distance function (see deps/sdf-dataset)
 ./build/subgrid -s Sphere -r 64 -o ./out/sphere.obj
 
 # 3. Precomputed edge intersections (.npz): explicit tet mesh + hits, no grid
-./build/subgrid --npz ./tests/data/npz/wine_glass_N64_explicit.npz -o ./out/explicit.obj
+./build/subgrid --npz ./data/npz/wine_glass_N64_explicit.npz -o ./out/explicit.obj
 ```
 
-A few small sample inputs ship in `tests/data/` — `cube`, `spot`, and `wine_glass`,
+A few small sample inputs ship in `data/` — `cube`, `spot`, and `wine_glass`,
 each as both a mesh (`meshes/*.obj`) and a precomputed `.npz` (`npz/*_N64_explicit.npz`).
 
 Swap `subgrid` → `dualSubgrid` for the dual (QEF) mesh from any of these inputs. 
