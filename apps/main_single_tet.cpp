@@ -32,9 +32,7 @@ int diagonal_cuts[3] = {0, 4, 0};
 
 int max_nc = 10;
 
-bool allow_intersections = false,
-     only_recursive_build = false,
-     always_show_other_tet = false;
+bool always_show_other_tet = false;
 
 // When loaded from a config file, overrides uniform t-values.
 // Cleared on any slider change, reverting to uniform.
@@ -233,14 +231,12 @@ new_reconstruction_from_single_tet_edge_ints(bool other_tet = false){
     }
 
     // cv curves
-    std::cout << "Computing boundary curves for edge ints: ";
     EdgeOccupations non_normal_edge_occupations;
     auto [open_curves, scoop_curves, normal_curves] =
     boundary_comb_curves(
         {0,1,2,3}, edge_ints.to_array(), non_normal_edge_occupations, true
     );
 
-    std::cout << "Showing boundary curves: ";
     if (!noViz)
         embed_and_visualize_boundary_curves(open_curves, scoop_curves, normal_curves,
                 tet_positions, edge_isect_ts, (double)scoop_mid_vertex_bulge, other_tet ? "_xTet" : "");
@@ -248,7 +244,6 @@ new_reconstruction_from_single_tet_edge_ints(bool other_tet = false){
     if (!other_tet) log_curve_stats(open_curves, scoop_curves, normal_curves);
 
     bool verbose = true;
-    std::cout << "Constructing subgrid surface: ";
     auto local_soup = subgrid_surface(tet_positions, {0,1,2,3}, edge_isect_ts, open_curves, scoop_curves, non_normal_edge_occupations,
                         scoop_mid_vertices, (double)scoop_mid_vertex_bulge, verbose);
     auto [face_inds, vertex_positions] = local_soup.get_soup();
@@ -314,8 +309,6 @@ void myCallback() {
         EdgeInts edge_ints = build_edge_ints();
         new_reconstruction_from_single_tet_edge_ints();
     }
-    ImGui::Checkbox("allow intersections", &allow_intersections);
-    ImGui::Checkbox("only recursive build", &only_recursive_build);
     if (ImGui::Checkbox("scoop mid vertices", &scoop_mid_vertices)){
         new_reconstruction_from_single_tet_edge_ints();
         if (always_show_other_tet || ne_x1 > 0 || ne_x2 > 0 || ne_x3 > 0)
