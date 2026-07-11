@@ -1,9 +1,8 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
-    paths-ignore: ['**.md', 'docs/**', 'LICENSE']
+  # Only run on PRs targeting main — not on every push — so contributors aren't
+  # billed a full multi-OS build on each commit to their branch.
   pull_request:
     branches: [main]
     paths-ignore: ['**.md', 'docs/**', 'LICENSE']
