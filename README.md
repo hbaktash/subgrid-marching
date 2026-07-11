@@ -59,7 +59,7 @@ git submodule update --init --recursive
 ## Building
 
 ```sh
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ```
 
@@ -72,7 +72,7 @@ opening a window. If you only need the CLI — e.g. on a server — build withou
 viewer to drop the Polyscope / OpenGL / GLFW dependency entirely:
 
 ```sh
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSUBGRID_POLYSCOPE_VIEWER=OFF
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSUBGRID_POLYSCOPE_VIEWER=OFF
 cmake --build build -j
 ```
 

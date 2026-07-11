@@ -16,16 +16,25 @@ concurrency:
 jobs:
   build-and-test:
     name: build & test (${{ matrix.name }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
           # Full build with the interactive Polyscope viewer (all targets).
-          - name: viewer
+          - name: linux-viewer
+            os: ubuntu-latest
             viewer: "ON"
           # Lightweight headless build: no Polyscope / OpenGL dependency.
-          - name: headless
+          - name: linux-headless
+            os: ubuntu-latest
+            viewer: "OFF"
+          # macOS runners are Apple Silicon (arm64) — exercises the Enoki arm64 fix.
+          - name: macos-viewer
+            os: macos-latest
+            viewer: "ON"
+          - name: macos-headless
+            os: macos-latest
             viewer: "OFF"
 
     steps:
@@ -34,23 +43,27 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install build dependencies
+      - name: Install build dependencies (Linux)
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           # Polyscope needs X11/OpenGL headers to build (only used by the viewer job,
           # but harmless to always install).
           sudo apt-get install -y \
-            build-essential cmake ninja-build \
+            build-essential cmake \
             xorg-dev libglu1-mesa-dev
+
+      # macOS runners ship cmake and clang/make; Polyscope uses native Cocoa/OpenGL,
+      # so no extra dependencies are needed there.
 
       - name: Configure
         run: >
-          cmake -S . -B build -G Ninja
+          cmake -S . -B build
           -DCMAKE_BUILD_TYPE=Release
           -DSUBGRID_POLYSCOPE_VIEWER=${{ matrix.viewer }}
 
       - name: Build
-        run: cmake --build build
+        run: cmake --build build -j
 
       - name: Test
         run: ctest --test-dir build --output-on-failure

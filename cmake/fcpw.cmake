@@ -12,7 +12,15 @@ CPMAddPackage(
     NAME enoki
     GITHUB_REPOSITORY mitsuba-renderer/enoki
     GIT_TAG 141cf4bd18eee674841a7c3e3c28f3db44adc6fa
+    DOWNLOAD_ONLY YES
 )
+if (enoki_SOURCE_DIR)
+    # Teach Enoki's ARM check about Apple Silicon's "arm64" (else it probes -march=native, which Apple clang rejects).
+    file(READ "${enoki_SOURCE_DIR}/CMakeLists.txt" _enoki_cml)
+    string(REPLACE "MATCHES \"aarch64\"" "MATCHES \"aarch64|arm64\"" _enoki_cml "${_enoki_cml}")
+    file(WRITE "${enoki_SOURCE_DIR}/CMakeLists.txt" "${_enoki_cml}")
+    add_subdirectory("${enoki_SOURCE_DIR}" "${enoki_BINARY_DIR}")
+endif()
 
 # Create a consistent alias if CPM provided an 'enoki' target
 if (TARGET enoki)
