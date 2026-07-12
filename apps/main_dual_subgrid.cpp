@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
     args::ArgumentParser parser("Extract an isosurface from a scalar function defined on a triangle mesh or SDF.");
     args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
     args::ValueFlag<std::string> inputMeshFilename(parser, "inputMesh", "Input mesh file (OBJ, OFF, PLY)", {'i', "input"});
-    args::ValueFlag<std::string> inputSDFName(parser, "inputSDF", "Input SDF name (OBJ, OFF, PLY)", {'s', "inputSDF"});
+    args::ValueFlag<std::string> inputSDFName(parser, "inputSDF", "Named built-in SDF (e.g. Sphere, Torus); see deps/sdf-dataset", {'s', "inputSDF"});
     args::ValueFlag<std::string> outputMeshFilename(parser, "outputMesh", "Output mesh file (OBJ, OFF, PLY)", {'o', "output"});
     args::ValueFlag<size_t> tetGridResolution(parser, "tetGridResolution", "Grid resolution (e.g., 32, 64, 128 for n^3 grid)", {'r', "tetGridResolution"}, 64);
     args::Flag mod2Flag(parser, "mod2", "Use mod2 intersection reduction before dual construction", {"mod2"});

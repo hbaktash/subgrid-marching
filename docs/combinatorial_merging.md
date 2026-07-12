@@ -1,33 +1,37 @@
 # Vertex merging
 
 Per-tet reconstruction produces a triangle *soup*: adjacent tetrahedra each emit
-their own copy of the vertices they share. Those duplicates must be merged to get
-a usable mesh. `subgrid` (and `dualSubgrid`) offer three modes.
+their own copy of the vertices they share. The three policies below all emit the
+**same triangles** — they differ only in how (or whether) those shared duplicate
+vertices are welded. `subgrid` exposes all three; the dual pipeline always uses
+combinatorial merge.
 
-## Modes
+## Policies at a glance
 
-| Mode | Flag | What it does |
-|------|------|--------------|
-| **Combinatorial** (default) | *(none)* | Merges vertices by exact combinatorial identity: two vertices are the same iff they are the same intersection point on the same shared tet edge. No tolerance, nothing to tune. |
-| **Numerical** | `--mergeEPS <eps>` | Merges vertices whose positions lie within `<eps>` of each other (KD-tree union-find). Best-effort. |
-| **None** | `--noMerge` | Emits the raw soup — one vertex per tet corner, no stitching. |
+| Policy | Flag | Output | Speed |
+|--------|------|--------|-------|
+| **Combinatorial** (default) | *(none)* | Edge-manifold, and watertight + orientable when every tet is even-sum. Exact and resolution-independent — no tolerance to tune. | Slowest (adds ~16–19% construction time) |
+| **Numerical** | `--mergeEPS <eps>` | Positional welding of vertices within `<eps>` (KD-tree union-find). Best-effort, prone to error. | Faster |
+| **None** | `--noMerge` | Raw soup — one vertex per tet corner, with duplicates at every shared face. | Fastest |
+
+Merging only removes duplicate *vertices*, never triangles, so all three produce
+the identical face count. Combinatorial merge reduces the vertex count about 4–5×
+versus the raw soup.
 
 ## Which one to use
 
 - **Combinatorial merge is the default and the recommended choice.** It is exact
-  and resolution-independent, so the result is a clean, watertight, orientable
-  mesh whenever every tet is even-sum (see the note on non-even tets in the
-  [README](../README.md)). The dual pipeline always uses this mode.
-- **Numerical merge** is provided for interop and debugging. A single global
-  epsilon cannot both stitch every shared-face duplicate (adjacent tets recompute
-  them with small floating-point drift) *and* avoid collapsing genuinely-distinct
-  nearby vertices, so on detailed inputs it can leave cracks (eps too small) or
-  non-manifold pinches (eps too large). Prefer combinatorial merge unless you
-  specifically need positional welding.
-- **No merge** is handy for inspecting the raw per-tet output.
-
-Combinatorial merge adds roughly 16–19% construction time and reduces the vertex
-count about 4–5× compared to the unmerged soup.
+  and resolution-independent, so the result is edge-manifold — and watertight and
+  orientable whenever every tet is even-sum (see the note on non-even tets in the
+  [README](../README.md)). It costs a bit of construction time. The dual pipeline
+  always uses this mode.
+- **Numerical merge** is faster but error-prone. A single global epsilon cannot both stitch every shared-face
+  duplicate (adjacent tets recompute them with small floating-point drift) *and*
+  avoid collapsing genuinely-distinct nearby vertices, so on detailed inputs it
+  can leave cracks (eps too small) or non-manifold pinches (eps too large). Prefer
+  combinatorial merge unless you specifically need positional welding.
+- **No merge** is the fastest and is handy for inspecting the raw per-tet output,
+  but leaves duplicate vertices along every shared face. Could be used for positional welding as a post-process via other programs.
 
 ---
 

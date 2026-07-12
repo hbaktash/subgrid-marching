@@ -94,7 +94,7 @@ Both `subgrid` and `dualSubgrid` take exactly one input: a precomputed `.npz` of
 intersections (`--npz`), a triangle mesh file (`-i`), or a named built-in SDF (`-s`). 
 With `--npz` the tet mesh and intersections come
 entirely from the file, so `-r` does not apply — see
-[explicit input format](docs/explicit_input_format.md).
+[explicit input format](docs/explicit_input_format.md) for description and [./data/npz/]() for examples.
 
 ### subgrid — primal extraction
 
@@ -106,24 +106,25 @@ entirely from the file, so `-r` does not apply — see
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-i, --input` | — | Input triangle mesh (OBJ / PLY / OFF) |
-| `-s, --inputSDF` | — | Named built-in SDF (e.g. `Sphere`, `Torus`) |
+| `-i, --input` | — | Input triangle mesh |
+| `-s, --inputSDF` | — | Named built-in SDF, e.g. `Sphere`, `Torus` (ported from [sdf-dataset](https://github.com/GeometryCollective/sdf-dataset)) |
 | `--npz` | — | Explicit tet mesh + precomputed edge intersections (`.npz`); `-r` is ignored |
-| `-r, --tetGridResolution` | 32 | Grid resolution — builds an n³ cube grid (5n³ tetrahedra) |
+| `-r, --tetGridResolution` | 64 | Grid resolution — builds an n³ cube grid (5n³ tetrahedra) |
 | `-o, --output` | — | Output mesh path; if omitted, result is only visualized |
-| `--mergeEPS` | -1 | Positional merge epsilon; passing a value ≥ 0 switches from the default combinatorial merge to numerical merge |
-| `--noMerge` | off | Disable all vertex merging (output the raw triangle soup) |
-| `--mod2` | off | Reduce edge intersection counts mod 2 before construction |
-| `--noViz` | off | Skip Polyscope visualization |
-| `--noPBar` | off | Suppress progress bar |
-| `--inputSaveDir` | — | Save the preprocessed/normalized input mesh and exit; produces the exact preprocessed input |
 
-By default the output is merged combinatorially (exact, resolution-independent).
-Pass `--mergeEPS <eps>` (with `eps ≥ 0`) to merge positionally instead, or
-`--noMerge` to emit the raw per-tet triangle soup.
+**Vertex merging** is set by two flags: the default is exact **combinatorial**
+merge; `--mergeEPS <eps>` (with `eps ≥ 0`) switches to positional **numerical**
+merge, and `--noMerge` emits the raw per-tet triangle soup. The trade-offs are in
+[vertex merging](docs/combinatorial_merging.md).
 
-Output is saved under `<output_dir>/subgrid/<name>.obj` (or `mod2/` when `--mod2`
-is set). The Polyscope window opens after extraction unless `--noViz` is given.
+An alternative **greedy** primal construction (fan/spiral triangulation of each
+boundary curve) is available with `--greedy` -- intersection-free property is not
+guaranteed in this mode.
+
+Remaining options (`--mod2`, `--noViz`, `--noPBar`, `--inputSaveDir`) are listed
+by `./build/subgrid -h`. Output is saved under `<output_dir>/subgrid/<name>.obj`
+(or `mod2/` when `--mod2` is set); the Polyscope window opens after extraction
+unless `--noViz` is given.
 
 ### dualSubgrid — dual extraction
 
@@ -188,30 +189,6 @@ watertight input (even if self-intersecting) — even one stored as a triangle s
 reflects near-degenerate ray/grid intersections at that resolution; trying a
 different resolution typically changes it. A more robust ray intersection implementation 
 in the future should resolve such cases.
-
-## Repository layout
-
-```
-apps/          — executable entry points
-src/           — implementation (mirrors include/)
-include/       — headers, organized by pipeline stage
-  common/      — generic utilities, visualization, file I/O
-  grid/        — grid iteration, mesh factory
-  query/       — input query handlers (mesh BVH, SDF)
-  nc/          — normal-coordinate containers and solver
-  subgrid_MT/  — per-tet reconstruction (boundary curves, primal/dual surface)
-  dual/        — dual solver (QEF, dual mesh assembly)
-  assembly/    — global mesh construction and merging
-deps/          — git submodules (geometry-central, sdf-dataset)
-docs/          — usage documentation
-tests/         — unit tests
-standalone/    - standalone files and examples
-```
-
-For the algorithm itself, see [the paper](https://arxiv.org/abs/2606.00454) (cited below). The `docs/` folder covers
-usage details: [vertex merging](docs/combinatorial_merging.md),
-[construction policy](docs/construction_policy.md), and the
-[explicit `.npz` input format](docs/explicit_input_format.md).
 
 ## Citation
 
