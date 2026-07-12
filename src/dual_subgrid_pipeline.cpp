@@ -29,9 +29,11 @@ static DualSubgridPipelineResult run_dual_subgrid_impl(
     TriangleSoup::COMB_MERGE = true;
 
     auto start_time = clock_now(), end_time = clock_now();
+    size_t processed_tets = 0;
     for (const auto& tet_data : tet_range) {
-        if ((tet_data.indices[0] % 10000 == 0) && opts.show_progress)
-            print_progress(double(tet_data.indices[0] * 5) / double(result.total_tets));
+        if (opts.show_progress && (processed_tets % 10000 == 0))
+            print_progress(double(processed_tets) / double(result.total_tets));
+        ++processed_tets;
 
         array<Vector3,4>  tet_positions = tet_data.positions;
         array<size_t,4>   tet_indices   = tet_data.indices;
@@ -75,7 +77,7 @@ static DualSubgridPipelineResult run_dual_subgrid_impl(
         end_time = clock_now();
         result.construction_time += duration<double>(end_time - start_time).count();
     }
-    if (opts.show_progress) print_progress(1.0);
+    if (opts.show_progress) { print_progress(1.0); std::cout << std::endl; }
     return result;
 }
 

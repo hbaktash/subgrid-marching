@@ -106,7 +106,7 @@ int main(int argc, char** argv) {
         } else {
             std::unique_ptr<InputQueryHandler> query_handler;
             if (use_sdf) {
-                query_handler = std::make_unique<SDFQueryHandler>(args::get(inputSDFName));
+                query_handler = std::make_unique<SDFQueryHandler>(args::get(inputSDFName), 1e-3f);
             } else {
                 SimplePolygonMesh simpleMesh;
                 simpleMesh.readMeshFromFile(args::get(inputMeshFilename), "");

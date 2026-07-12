@@ -166,21 +166,22 @@ void center_and_normalize(std::vector<Vector3> &points, double r){
     }
 }
 
+// Redraws an in-place progress bar on the current line (via '\r'); never emits a
+// newline, so the caller is responsible for printing one after the final update.
 void print_progress(double progress) {
-    int barWidth = 50;
-    std::cout << "\r[";
-    int pos = barWidth * progress;
+    if (progress < 0.0) progress = 0.0;
+    if (progress > 1.0) progress = 1.0;
+    const int barWidth = 50;
+    int pos = static_cast<int>(barWidth * progress);
+    std::cout << "\r" << ANSI_FG_YELLOW << "[";
     for (int i = 0; i < barWidth; ++i) {
-        if (i < pos) std::cout << ANSI_FG_YELLOW << "=";
+        if (i < pos) std::cout << "=";
         else if (i == pos) std::cout << ">";
         else std::cout << " ";
     }
     std::cout << "] " << std::fixed << std::setprecision(1)
-              << (progress * 100.0) << "%";
+              << (progress * 100.0) << "%" << ANSI_RESET;
     std::cout.flush();
-    if (progress >= 1.0) {
-        std::cout << ANSI_RESET << std::endl;
-    }
 }
 
 void triangulate_polygons(
