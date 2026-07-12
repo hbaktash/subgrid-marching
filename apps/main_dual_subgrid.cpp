@@ -45,6 +45,7 @@ int main(int argc, char** argv) {
     args::ValueFlag<std::string> inputNpzFilename(parser, "inputNpz", "Explicit tet mesh + precomputed intersections (.npz)", {"npz"});
     args::Flag noVisFlag(parser, "noVis", "Disable visualization", {"noViz"});
     args::Flag noProgBar(parser, "noProgBar", "Disable progress bar", {"noPBar"});
+    args::Flag listSDFsFlag(parser, "listSDFs", "List the available built-in SDF names and exit", {"listSDFs"});
 
     try {
         parser.ParseCLI(argc, argv);
@@ -62,6 +63,13 @@ int main(int argc, char** argv) {
     }
 
     try {
+        if (listSDFsFlag) {
+            std::cout << "Available built-in SDFs:\n";
+            for (const auto& n : SDFQueryHandler::available_sdf_names())
+                std::cout << "  " << n << "\n";
+            return EXIT_SUCCESS;
+        }
+
         std::string out_path;
         bool save_output = false;
         if (outputMeshFilename){
@@ -84,6 +92,10 @@ int main(int argc, char** argv) {
         int input_count = (int)use_sdf + (int)use_mesh + (int)use_npz;
         if (input_count != 1) {
             log_error("provide exactly one of --input (mesh), --inputSDF, or --npz.");
+            return EXIT_FAILURE;
+        }
+        if (use_sdf && !SDFQueryHandler::is_valid_sdf_name(args::get(inputSDFName))) {
+            log_error("unknown SDF '" + args::get(inputSDFName) + "'. Use --listSDFs to see available options.");
             return EXIT_FAILURE;
         }
 

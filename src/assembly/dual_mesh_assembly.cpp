@@ -1,6 +1,4 @@
 #include "assembly/dual_mesh_assembly.h"
-#include "assembly/mesh_processing.h"
-#include "common/visual_utils.h"
 
 void cleanup_dual_polygons(
     const std::vector<std::vector<size_t>>& input_dual_polygons,

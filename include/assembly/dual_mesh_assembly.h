@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/utils.h"
+#include "assembly/mesh_processing.h"
 
 void cleanup_dual_polygons(
     const std::vector<std::vector<size_t>>& input_dual_polygons,

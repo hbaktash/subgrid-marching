@@ -1,13 +1,10 @@
 #pragma once
 
-#include "geometrycentral/surface/surface_mesh.h"
-#include "geometrycentral/surface/vertex_position_geometry.h"
 #include "geometrycentral/surface/simple_polygon_mesh.h"
 #include "fcpw/fcpw.h"
 
 #include <vector>
 #include <array>
-#include <memory>
 #include <functional>
 
 using namespace geometrycentral;
@@ -84,6 +81,11 @@ private:
     
 public:
     SDFQueryHandler(const std::string& name, float step_size = 1e-5f);
+
+    // Names of all built-in SDFs (sorted), and a membership test. Backed by the
+    // sdf-dataset registry, so they never go out of sync with what evaluate() accepts.
+    static std::vector<std::string> available_sdf_names();
+    static bool is_valid_sdf_name(const std::string& name);
     
     void query_intersections(
         const std::array<Vector3,4>& tet_positions,

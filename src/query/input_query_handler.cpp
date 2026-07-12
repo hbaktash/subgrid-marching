@@ -1,12 +1,12 @@
 #include "query/input_query_handler.h"
 #include "query/intersection_query.h"
 #include "query/sdf_queries.h"
-#include "assembly/mesh_processing.h"
 #include "common/utils.h"
 #include "sdf/sdf.hpp"
 
 #include <iostream>
 #include <random>
+#include <algorithm>
 
 // ============================================================================
 // SDF Handler Implementation
@@ -37,15 +37,30 @@ void InputQueryHandler::update_global_query_count_map(
     local_edge_query_counts = {0, 0, 0, 0, 0, 0};
 }
 
+std::vector<std::string> SDFQueryHandler::available_sdf_names() {
+    auto names = sdf::getAvailableSDFs();
+    std::sort(names.begin(), names.end());
+    return names;
+}
+
+bool SDFQueryHandler::is_valid_sdf_name(const std::string& name) {
+    auto names = sdf::getAvailableSDFs();
+    return std::find(names.begin(), names.end(), name) != names.end();
+}
+
 SDFQueryHandler::SDFQueryHandler(const std::string& name, float step_size)
     : sdf_name(name), min_step_size(step_size)
 {
+    // Validate up front so we fail immediately (instead of lazily mid-query).
+    if (!is_valid_sdf_name(name))
+        throw std::runtime_error("unknown SDF '" + name + "'");
+
     // Create the SDF evaluation function
     sdf_func = [name](const Vector3& p) -> float {
         glm::vec3 glm_p(p.x, p.y, p.z);
         return sdf::evaluate(name, glm_p);
     };
-    
+
     log_info("loaded SDF: " + sdf_name);
 }
 

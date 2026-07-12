@@ -93,6 +93,7 @@ single pure-Python file. Drop one file into your project and call
 
 Both `subgrid` and `dualSubgrid` take exactly one type of input: a precomputed `.npz` of edge
 intersections (`--npz`), a triangle mesh file (`-i`), or a named built-in SDF (`-s`). 
+Run either executable with `--listSDFs` to print the available SDF names.
 With `--npz` the tet mesh and intersections come entirely from the file, so `-r` does not apply — see
 [explicit input format](docs/explicit_input_format.md) for the format and
 [`data/npz/`](data/npz/) for examples.
