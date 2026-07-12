@@ -21,7 +21,9 @@ void cleanup_dual_polygons(
             vertex_used[vidx] = true;
         }
     }
-    std::cout << ANSI_FG_MAGENTA << "[Info] cleanup_dual_polygons: Removed " << removed_count << "/" << input_dual_polygons.size() << " degenerate (<3) polygons." << ANSI_RESET << std::endl;
+    if (removed_count > 0)
+        log_info("cleanup_dual_polygons: removed " + std::to_string(removed_count) + "/" +
+                 std::to_string(input_dual_polygons.size()) + " degenerate (<3) polygons.");
     std::vector<size_t> old_to_new_index(input_dual_positions.size(), SIZE_MAX);
     output_dual_positions.clear();
     for (size_t vidx = 0; vidx < input_dual_positions.size(); ++vidx){
@@ -300,12 +302,11 @@ construct_primal_mesh_from_face_per_edge_data(
         }
     }
     if (!has_pinch_vertex){
-        std::cout << ANSI_FG_GREEN << "\t No pinch vertices detected, primal mesh is manifold." << ANSI_RESET << std::endl;
         initial_primal_mesh->greedilyOrientFaces();
         return {initial_primal_mesh, initial_geometry};
     }
 
-    std::cout << ANSI_FG_YELLOW << "\t Pinch vertices detected, fixing the mesh." << ANSI_RESET << std::endl;
+    log_warn("pinch vertices detected in the primal mesh; separating the pinches.");
     std::vector<std::vector<size_t>> out_polygons;
     std::vector<Vector3> out_positions;
     remove_pinch_vertices(*initial_primal_mesh, *initial_geometry, polygons, out_polygons, out_positions);

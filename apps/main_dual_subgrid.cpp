@@ -61,113 +61,118 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::string out_path;
-    bool save_output = false;
-    if (outputMeshFilename){
-        out_path = args::get(outputMeshFilename);
-        ensure_path_exists(out_path);
-        save_output = true;
-    }
-
-#ifdef HAVE_POLYSCOPE
-    if (!noVisFlag){
-        polyscope::state::userCallback = myCallback;
-        initialize_polyscope();
-    }
-#endif
-
-    // ---- input mode ----
-    bool use_sdf = inputSDFName;
-    bool use_mesh = inputMeshFilename;
-    bool use_npz = inputNpzFilename;
-    int input_count = (int)use_sdf + (int)use_mesh + (int)use_npz;
-    if (input_count != 1) {
-        std::cerr << "Error: Provide exactly one of --input (mesh), --inputSDF, or --npz." << std::endl;
-        return 1;
-    }
-
-    // ---- run pipeline ----
-    DualSubgridPipelineOpts opts;
-    opts.mod2 = mod2Flag;
-    opts.use_robust = USE_ROBUST_QUERIES;
-    opts.show_progress = !noProgBar;
-    opts.reg_alpha = args::get(regAlpha);
-    opts.project_duals = args::get(projectDuals);
-
-    std::cout << " dual solver: alpha=" << opts.reg_alpha
-              << ", projectDuals=" << (opts.project_duals ? "true" : "false")
-              << ", mod2=" << (opts.mod2 ? "true" : "false") << "\n";
-
-    DualSubgridPipelineResult result;
-
-    if (use_npz) {
-        result = run_dual_subgrid_pipeline_npz(args::get(inputNpzFilename), opts);
-    } else {
-        std::unique_ptr<InputQueryHandler> query_handler;
-        if (use_sdf) {
-            query_handler = std::make_unique<SDFQueryHandler>(args::get(inputSDFName));
-        } else {
-            SimplePolygonMesh simpleMesh;
-            simpleMesh.readMeshFromFile(args::get(inputMeshFilename), "");
-            auto preprocessed = preprocess_input_mesh(simpleMesh);
-            if (inputSaveDir) {
-                save_polygon_soup_as_obj(args::get(inputSaveDir), preprocessed.positions, preprocessed.polygons);
-                return EXIT_SUCCESS;
-            }
-#ifdef HAVE_POLYSCOPE
-            if (!noVisFlag)
-                polyscope::registerSurfaceMesh("Input Mesh", preprocessed.positions, preprocessed.polygons)->setEnabled(false);
-#endif
-            query_handler = std::make_unique<MeshQueryHandler>(preprocessed.positions, preprocessed.polygons);
+    try {
+        std::string out_path;
+        bool save_output = false;
+        if (outputMeshFilename){
+            out_path = args::get(outputMeshFilename);
+            ensure_path_exists(out_path);
+            save_output = true;
         }
-        result = run_dual_subgrid_pipeline(*query_handler, args::get(tetGridResolution), opts);
-    }
-
-    TriangleSoup& global_soup = result.soup;
-
-    std::cout << " non-zero tets:   " << result.non_zero_tets << "/" << result.total_tets << "\n";
-    std::cout << " non-normal tets: " << result.non_normal_tets << "/" << result.non_zero_tets << "\n";
-    std::cout << " non-even tets:   " << result.non_even_tets  << "/" << result.non_zero_tets << "\n";
-    if (result.non_even_tets > 0)
-        std::cout << ANSI_FG_YELLOW << " [warning] even-sum condition not satisfied; output might not be orientable and might have open holes."
-                  << " This is likely due to a non-watertight input or a grid edge-intersection issue." << ANSI_RESET << "\n";
-
-    // ---- postprocess ----
-    std::cout << " Building primal and dual meshes...\n";
-
-    auto start_time = now();
-    auto [primal_mesh, primal_geo] = construct_primal_mesh_from_face_per_edge_data(
-        global_soup.faces, global_soup.vertices, global_soup.faces_per_edge
-    );
-    double pp_primal_time = duration<double>(now() - start_time).count();
-    if (!primal_mesh->isManifold())
-        throw std::runtime_error("Primal mesh is not manifold.");
-
-    start_time = now();
-    auto [dual_mesh, dual_geo] = construct_dual_mesh(
-        *primal_mesh, *primal_geo, global_soup.dual_positions
-    );
-    double pp_dual_time = duration<double>(now() - start_time).count();
 
 #ifdef HAVE_POLYSCOPE
-    if (!noVisFlag)
-        polyscope::registerSurfaceMesh("dual mesh", dual_geo->inputVertexPositions, dual_mesh->getFaceVertexList())->setSurfaceColor({0.8, 0.2, 0.2})->setEnabled(false);
+        if (!noVisFlag){
+            polyscope::state::userCallback = myCallback;
+            initialize_polyscope();
+        }
 #endif
 
-    if (save_output){
-        writeSurfaceMesh(*dual_mesh, *dual_geo, out_path, "obj");
-        std::cout << " Saved dual mesh to " << out_path << "\n";
-    }
+        // ---- input mode ----
+        bool use_sdf = inputSDFName;
+        bool use_mesh = inputMeshFilename;
+        bool use_npz = inputNpzFilename;
+        int input_count = (int)use_sdf + (int)use_mesh + (int)use_npz;
+        if (input_count != 1) {
+            log_error("provide exactly one of --input (mesh), --inputSDF, or --npz.");
+            return EXIT_FAILURE;
+        }
 
-    double overall_time = duration<double>(now() - very_start_time).count();
-    std::cout << " query: "        << result.isect_time << "s"
-              << "  construction: " << result.construction_time    << "s"
-              << "  primal: "       << pp_primal_time   << "s"
-              << "  dual: "         << pp_dual_time     << "s"
-              << "  overall: "      << overall_time     << "s\n";
+        // ---- run pipeline ----
+        DualSubgridPipelineOpts opts;
+        opts.mod2 = mod2Flag;
+        opts.use_robust = USE_ROBUST_QUERIES;
+        opts.show_progress = !noProgBar;
+        opts.reg_alpha = args::get(regAlpha);
+        opts.project_duals = args::get(projectDuals);
+
+        std::cout << " dual solver: alpha=" << opts.reg_alpha
+                  << ", projectDuals=" << (opts.project_duals ? "true" : "false")
+                  << ", mod2=" << (opts.mod2 ? "true" : "false") << "\n";
+
+        DualSubgridPipelineResult result;
+
+        if (use_npz) {
+            result = run_dual_subgrid_pipeline_npz(args::get(inputNpzFilename), opts);
+        } else {
+            std::unique_ptr<InputQueryHandler> query_handler;
+            if (use_sdf) {
+                query_handler = std::make_unique<SDFQueryHandler>(args::get(inputSDFName));
+            } else {
+                SimplePolygonMesh simpleMesh;
+                simpleMesh.readMeshFromFile(args::get(inputMeshFilename), "");
+                auto preprocessed = preprocess_input_mesh(simpleMesh);
+                if (inputSaveDir) {
+                    save_polygon_soup_as_obj(args::get(inputSaveDir), preprocessed.positions, preprocessed.polygons);
+                    return EXIT_SUCCESS;
+                }
+#ifdef HAVE_POLYSCOPE
+                if (!noVisFlag)
+                    polyscope::registerSurfaceMesh("Input Mesh", preprocessed.positions, preprocessed.polygons)->setEnabled(false);
+#endif
+                query_handler = std::make_unique<MeshQueryHandler>(preprocessed.positions, preprocessed.polygons);
+            }
+            result = run_dual_subgrid_pipeline(*query_handler, args::get(tetGridResolution), opts);
+        }
+
+        TriangleSoup& global_soup = result.soup;
+
+        std::cout << " non-zero tets:   " << result.non_zero_tets << "/" << result.total_tets << "\n";
+        std::cout << " non-normal tets: " << result.non_normal_tets << "/" << result.non_zero_tets << "\n";
+        std::cout << " non-even tets:   " << result.non_even_tets  << "/" << result.non_zero_tets << "\n";
+        if (result.non_even_tets > 0)
+            log_warn("even-sum condition not satisfied; output might not be orientable and might have open holes."
+                     " Likely a non-watertight input or a grid edge-intersection issue.");
+
+        // ---- postprocess ----
+        log_info("building primal and dual meshes...");
+
+        auto start_time = now();
+        auto [primal_mesh, primal_geo] = construct_primal_mesh_from_face_per_edge_data(
+            global_soup.faces, global_soup.vertices, global_soup.faces_per_edge
+        );
+        double pp_primal_time = duration<double>(now() - start_time).count();
+        if (!primal_mesh->isManifold())
+            throw std::runtime_error("primal mesh is not manifold.");
+
+        start_time = now();
+        auto [dual_mesh, dual_geo] = construct_dual_mesh(
+            *primal_mesh, *primal_geo, global_soup.dual_positions
+        );
+        double pp_dual_time = duration<double>(now() - start_time).count();
 
 #ifdef HAVE_POLYSCOPE
-    if (!noVisFlag) polyscope::show();
+        if (!noVisFlag)
+            polyscope::registerSurfaceMesh("dual mesh", dual_geo->inputVertexPositions, dual_mesh->getFaceVertexList())->setSurfaceColor({0.8, 0.2, 0.2})->setEnabled(true);
 #endif
+
+        if (save_output){
+            writeSurfaceMesh(*dual_mesh, *dual_geo, out_path, "obj");
+            std::cout << " saved dual mesh to " << out_path << "\n";
+        }
+
+        double overall_time = duration<double>(now() - very_start_time).count();
+        std::cout << " query: "        << result.isect_time << "s"
+                  << "  construction: " << result.construction_time    << "s"
+                  << "  primal: "       << pp_primal_time   << "s"
+                  << "  dual: "         << pp_dual_time     << "s"
+                  << "  overall: "      << overall_time     << "s\n";
+
+#ifdef HAVE_POLYSCOPE
+        if (!noVisFlag) polyscope::show();
+#endif
+    } catch (const std::exception& e) {
+        log_error(e.what());
+        return EXIT_FAILURE;
+    }
     return EXIT_SUCCESS;
 }

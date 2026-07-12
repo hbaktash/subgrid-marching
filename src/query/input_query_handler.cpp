@@ -2,6 +2,7 @@
 #include "query/intersection_query.h"
 #include "query/sdf_queries.h"
 #include "assembly/mesh_processing.h"
+#include "common/utils.h"
 #include "sdf/sdf.hpp"
 
 #include <iostream>
@@ -45,7 +46,7 @@ SDFQueryHandler::SDFQueryHandler(const std::string& name, float step_size)
         return sdf::evaluate(name, glm_p);
     };
     
-    std::cout << "Loaded SDF from file: " << sdf_name << std::endl;
+    log_info("loaded SDF: " + sdf_name);
 }
 
 void SDFQueryHandler::query_intersections(
@@ -88,8 +89,8 @@ MeshQueryHandler::MeshQueryHandler(
 {
     // Build accelerator structure once
     accel = get_fcpw_accel(polygons, positions);
-    std::cout << "Built FCPW accelerator for mesh with " << positions.size() 
-              << " vertices and " << polygons.size() << " faces." << std::endl;
+    log_info("built FCPW accelerator for mesh with " + std::to_string(positions.size()) +
+             " vertices and " + std::to_string(polygons.size()) + " faces.");
 }
 
 void MeshQueryHandler::query_intersections(

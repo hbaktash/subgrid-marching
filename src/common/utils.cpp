@@ -191,8 +191,7 @@ void triangulate_polygons(
     output_triangles.clear();
     for (const auto &poly : input_polygons){
         if (poly.size() < 3 && remove_segments) {
-            std::cout<< "triangulate_polygons: Removed degenerate polygon with " << poly.size() << " vertices." << std::endl;
-            continue; // skip degenerate polygons
+            continue; // skip degenerate polygons (reported in aggregate by the caller)
         }
         else if (poly.size() <= 3){
             output_triangles.push_back(poly); // already triangle
@@ -449,7 +448,7 @@ pairs_to_single_polygon(
 
     // If there are multiple components, warn and return the largest one
     if (components.size() > 1 && warn){
-        std::cout << "pairs_to_single_polygon: warning - multiple components detected; returning the largest one." << std::endl;
+        log_warn("pairs_to_single_polygon: multiple components detected; returning the largest one.");
     }
 
     size_t best_idx = 0;

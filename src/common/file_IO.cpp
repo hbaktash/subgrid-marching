@@ -75,7 +75,7 @@ void save_polygon_soup_as_obj(
     ensure_path_exists(filename);
     std::ofstream out_file(filename);
     if (!out_file.is_open()) {
-        std::cerr << "Error: Could not open file " << filename << " for writing." << std::endl;
+        log_error("could not open file " + filename + " for writing.");
         return;
     }
 

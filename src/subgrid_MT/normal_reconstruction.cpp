@@ -342,7 +342,7 @@ compute_recursion_center_and_isect_ts(
     bool hit2 = segment_triangle_intersection(subd_center, tet_positions[2], p20, p21, p23, ts2_limit);
     bool hit3 = segment_triangle_intersection(subd_center, tet_positions[3], p30, p31, p32, ts3_limit);
     if (!hit0 || !hit1 || !hit2 || !hit3){
-        std::cout << ANSI_FG_YELLOW << "Warning: compute_recursion_center_and_isect_ts: segment-triangle intersection failed; falling back to greedy recursion intersections" << ANSI_RESET << std::endl;
+        log_warn("compute_recursion_center_and_isect_ts: segment-triangle intersection failed; falling back to greedy recursion intersections.");
         // Fallback to greedy recursion intersections
         ts0_limit = ts1_limit = ts2_limit = ts3_limit = 1.0;
     }

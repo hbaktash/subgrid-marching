@@ -16,6 +16,8 @@
 #include <set>
 #include <initializer_list>
 #include <unordered_set>
+#include <iostream>
+#include <string>
 
 
 using namespace geometrycentral;
@@ -29,6 +31,14 @@ using std::vector;
 #define ANSI_FG_WHITE "\x1b[37m"
 #define ANSI_FG_RED "\x1b[31m"
 #define ANSI_RESET "\x1b[0m"
+
+
+// Lightweight tagged diagnostics with a consistent prefix + color.
+// Only the tag is colored so the message text stays copy-pasteable.
+// Info goes to stdout; warnings and errors go to stderr.
+inline void log_info(const std::string& msg)  { std::cout << ANSI_FG_GREEN  << "[info] "  << ANSI_RESET << msg << "\n"; }
+inline void log_warn(const std::string& msg)  { std::cerr << ANSI_FG_YELLOW << "[warn] "  << ANSI_RESET << msg << "\n"; }
+inline void log_error(const std::string& msg) { std::cerr << ANSI_FG_RED    << "[error] " << ANSI_RESET << msg << "\n"; }
 
 
 
