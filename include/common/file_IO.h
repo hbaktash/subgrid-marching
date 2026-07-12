@@ -17,13 +17,6 @@ ensure_path_exists(
     const std::string &full_filepath
 );
 
-void 
-parse_output_filename_and_dir(
-    const std::string& full_output_path,
-    std::string& out_dir,
-    std::string& out_name
-);
-
 void save_polygon_soup_as_obj(
     const std::string& filename,
     const std::vector<Vector3>& vertices,

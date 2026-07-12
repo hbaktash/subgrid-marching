@@ -18,8 +18,7 @@ template<typename T> using duration = std::chrono::duration<T>;
 
 // Robust ray-intersection queries (FCPW watertight test + iterative all-hits).
 // Not exposed on the CLI on purpose: benchmarking showed it ~2x slower with
-// negligible effect on the output / non-even-tet count (welding the input is
-// what actually matters). A developer can flip this to true if they need it.
+// negligible effect on the intersection query robustness.
 static constexpr bool USE_ROBUST_QUERIES = false;
 
 
@@ -62,11 +61,11 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::string out_dir = "./meshes/results/", out_name = "output";
+    std::string out_path;
     bool save_output = false;
     if (outputMeshFilename){
-        ensure_path_exists(args::get(outputMeshFilename));
-        parse_output_filename_and_dir(args::get(outputMeshFilename), out_dir, out_name);
+        out_path = args::get(outputMeshFilename);
+        ensure_path_exists(out_path);
         save_output = true;
     }
 
@@ -150,19 +149,14 @@ int main(int argc, char** argv) {
     );
     double pp_dual_time = duration<double>(now() - start_time).count();
 
-    std::string sub_dir = opts.mod2 ? "dualmyMT" : "dualSubgrid";
 #ifdef HAVE_POLYSCOPE
     if (!noVisFlag)
         polyscope::registerSurfaceMesh("dual mesh", dual_geo->inputVertexPositions, dual_mesh->getFaceVertexList())->setSurfaceColor({0.8, 0.2, 0.2})->setEnabled(false);
 #endif
 
-    std::string filename;
     if (save_output){
-        std::string out_dir_sub = out_dir + "/" + sub_dir;
-        ensure_path_exists(out_dir_sub + "/dummy.dummy");
-        filename = out_dir_sub + "/" + out_name + ".obj";
-        writeSurfaceMesh(*dual_mesh, *dual_geo, filename);
-        std::cout << " Saved dual mesh to " << filename << "\n";
+        writeSurfaceMesh(*dual_mesh, *dual_geo, out_path, "obj");
+        std::cout << " Saved dual mesh to " << out_path << "\n";
     }
 
     double overall_time = duration<double>(now() - very_start_time).count();

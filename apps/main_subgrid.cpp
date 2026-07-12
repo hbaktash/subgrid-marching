@@ -19,8 +19,7 @@ template<typename T> using duration = std::chrono::duration<T>;
 
 // Robust ray-intersection queries (FCPW watertight test + iterative all-hits).
 // Not exposed on the CLI on purpose: benchmarking showed it ~2x slower with
-// negligible effect on the output / non-even-tet count (welding the input is
-// what actually matters). A developer can flip this to true if they need it.
+// negligible effect on the intersection query robustness.
 static constexpr bool USE_ROBUST_QUERIES = false;
 
 
@@ -64,11 +63,11 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::string out_dir = "./meshes/results/", out_name = "output";
+    std::string out_path;
     bool save_output = false;
     if (outputMeshFilename){
-        ensure_path_exists(args::get(outputMeshFilename));
-        parse_output_filename_and_dir(args::get(outputMeshFilename), out_dir, out_name);
+        out_path = args::get(outputMeshFilename);
+        ensure_path_exists(out_path);
         save_output = true;
     }
 
@@ -133,27 +132,23 @@ int main(int argc, char** argv) {
     TriangleSoup& global_soup = result.soup;
 
     // ---- postprocess and save ----
-    std::string filename = "";
-    if (save_output){
-        std::string out_dir_sub = out_dir + (mod2Flag ? "/mod2" : "/subgrid");
-        ensure_path_exists(out_dir_sub + "/dummy.dummy");
-        filename = out_dir_sub + "/" + out_name + ".obj";
+    const std::string& filename = out_path;
+    if (save_output)
         std::cout << " Will save output mesh to " << filename << "\n";
-    }
     if (TriangleSoup::COMB_MERGE){
         auto [mesh, geo] = makeSurfaceMeshAndGeometry(global_soup.faces, global_soup.vertices);
         mesh->greedilyOrientFaces();
 #ifdef HAVE_POLYSCOPE
         if (!noVisFlag) polyscope::registerSurfaceMesh("Subgrid Output Mesh [COMB MERGRED]", geo->inputVertexPositions, mesh->getFaceVertexList())->setSurfaceColor({0.3, 0.6, 0.2})->setBackFacePolicy(polyscope::BackFacePolicy::Custom);
 #endif
-        if (save_output) writeSurfaceMesh(*mesh, *geo, filename);
+        if (save_output) writeSurfaceMesh(*mesh, *geo, filename, "obj");
     }
     else if (numerical_merge) {
         auto [mesh, geo] = mergeIdenticalVertices(EPS, global_soup.faces, global_soup.vertices);
 #ifdef HAVE_POLYSCOPE
         if (!noVisFlag) polyscope::registerSurfaceMesh("Subgrid Output Mesh [NUMERICAL MERGE]", geo->inputVertexPositions, mesh->getFaceVertexList())->setSurfaceColor({0.3, 0.6, 0.2})->setBackFacePolicy(polyscope::BackFacePolicy::Custom);
 #endif
-        if (save_output) writeSurfaceMesh(*mesh, *geo, filename);
+        if (save_output) writeSurfaceMesh(*mesh, *geo, filename, "obj");
     }
     else {
 #ifdef HAVE_POLYSCOPE

@@ -26,28 +26,6 @@ void ensure_path_exists(const std::string &full_filepath) {
     }
 }
 
-void parse_output_filename_and_dir(
-    const std::string& full_output_path,
-    std::string& out_dir,
-    std::string& out_name
-){
-    size_t last_slash = full_output_path.find_last_of("/\\");
-    if (last_slash == std::string::npos){
-        out_dir = "./";
-        out_name = full_output_path;
-    } else {
-        out_dir = full_output_path.substr(0, last_slash); // not +1 to exclude slash
-        // remove suffix from name if any
-        size_t last_dot = full_output_path.find_last_of(".");
-        if (last_dot != std::string::npos && last_dot > last_slash){
-            out_name = full_output_path.substr(last_slash + 1, last_dot - last_slash - 1);
-            return;
-        }
-        out_name = full_output_path.substr(last_slash + 1);
-    }
-}
-
-
 bool load_tet_config_file(const std::string& path, TetConfigFileData& out) {
     std::ifstream f(path);
     if (!f.is_open()) return false;

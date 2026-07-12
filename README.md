@@ -14,8 +14,9 @@ An interactive single-tetrahedron visualizer is included as `singleTetSubgrid` -
 
 ## Quick examples
 
-The executables `subgrid` and `dualSubgrid` accept three input types; each writes an OBJ to the `-o` path (placed
-under `<dir>/subgrid/`). Run these from the repo root after [building](#building):
+The executables `subgrid` and `dualSubgrid` accept three input types and write the
+result to exactly the `-o` path you give. Run these from the repo root after
+[building](#building):
 
 ```sh
 # 1. Triangle mesh (OBJ / PLY / OFF), extracted on a 64³ grid
@@ -51,8 +52,8 @@ or exist as submodules (`geometry-central`, `sdf-dataset`):
 ## Cloning
 
 ```sh
-git clone --recursive <repository_url>
-cd normal-coordinates
+git clone --recursive git@github.com:hbaktash/subgrid-marching.git
+cd subgrid-marching
 git submodule update --init --recursive
 ```
 
@@ -90,11 +91,14 @@ single pure-Python file. Drop one file into your project and call
 
 ## Usage
 
-Both `subgrid` and `dualSubgrid` take exactly one input: a precomputed `.npz` of edge
+Both `subgrid` and `dualSubgrid` take exactly one type of input: a precomputed `.npz` of edge
 intersections (`--npz`), a triangle mesh file (`-i`), or a named built-in SDF (`-s`). 
-With `--npz` the tet mesh and intersections come
-entirely from the file, so `-r` does not apply — see
-[explicit input format](docs/explicit_input_format.md) for description and [./data/npz/]() for examples.
+With `--npz` the tet mesh and intersections come entirely from the file, so `-r` does not apply — see
+[explicit input format](docs/explicit_input_format.md) for the format and
+[`data/npz/`](data/npz/) for examples.
+
+For what each pipeline accepts and produces per tet, see the
+[construction policy](docs/construction_policy.md).
 
 ### subgrid — primal extraction
 
@@ -122,9 +126,8 @@ boundary curve) is available with `--greedy` -- intersection-free property is no
 guaranteed in this mode.
 
 Remaining options (`--mod2`, `--noViz`, `--noPBar`, `--inputSaveDir`) are listed
-by `./build/subgrid -h`. Output is saved under `<output_dir>/subgrid/<name>.obj`
-(or `mod2/` when `--mod2` is set); the Polyscope window opens after extraction
-unless `--noViz` is given.
+by `./build/subgrid -h`. The output mesh is written to exactly the `-o` path; the
+Polyscope window opens after extraction unless `--noViz` is given.
 
 ### dualSubgrid — dual extraction
 
@@ -148,7 +151,7 @@ Additional flags:
 | `-a, --alpha` | 0.1 | QEF regularization — higher values pull dual vertices toward the polygon centroid |
 | `--pd, --projectDuals` | off | Clip each dual vertex back inside its local grid cell |
 
-Output is saved under `<output_dir>/dualSubgrid/<name>.obj`.
+The dual mesh is written to exactly the `-o` path.
 
 ### singleTetSubgrid — interactive visualizer
 
