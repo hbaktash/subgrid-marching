@@ -187,11 +187,11 @@ parity, producing open curves — the output may then have small holes or be
 non-orientable near those tets.
 
 The dominant cause is a **non-watertight input**: meshes with holes/boundaries
-will always report some non-even tets, and that is expected. A
+will report some non-even tets, and that is expected. A
 watertight input (even if self-intersecting) — even one stored as a triangle soup — should report
 `non-even tets: 0`. A small residual count on an otherwise-closed mesh usually
 reflects near-degenerate ray/grid intersections at that resolution; trying a
-different resolution typically changes it. A more robust ray intersection implementation 
+different resolution typically resolves it. A more robust ray intersection implementation 
 in the future should resolve such cases.
 
 ## Citation
