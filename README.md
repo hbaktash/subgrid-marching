@@ -194,6 +194,11 @@ reflects near-degenerate ray/grid intersections at that resolution; trying a
 different resolution typically resolves it. A more robust ray intersection implementation 
 in the future should resolve such cases.
 
+## A note on self-intersections
+
+The output produced by this method—regardless of whether it is closed or orientable—is mathematically guaranteed to be free of self-intersections (see Appendix D in the [paper](https://hbaktash.github.io/projects/subgrid-marching-tetrahedra/index.html)). The per-tet self-intersection tests in `tests/test_self_intersection.cpp` confirm this empirically across thousands of configurations of edge-intersection counts and locations.
+If a numerical self-intersection test ever flags the output, it is likely detecting triangles that are *near*-overlapping but not actually overlapping—a false positive rather than a real intersection. How closely such triangles are allowed to approach is governed by the "push-in" epsilon (of Section 3.2.3 from the paper), exposed as the `scoop_bulge` parameter of `SubgridPipelineOpts` (`subgrid_pipeline.h`, default `1e-3`); a small enough `scoop_bulge` guarantees the intersection-free property, while increasing it pushes near-coincident triangles further apart. A principled (non-heuristic) way to choose this value is left to future work.
+
 ## Citation
 
 If you use this code in your research, please cite:

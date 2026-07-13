@@ -13,7 +13,7 @@ struct SubgridPipelineOpts {
     bool use_robust = false;           // robust ray-intersection queries (mesh input)
     bool show_progress = false;        // print a progress bar during the tet loop
     bool verbose = false;
-    double scoop_bulge = 0.0001;       // Steiner mid-scoop-vertex bulge magnitude
+    double scoop_bulge = 0.001;       // Steiner mid-scoop-vertex bulge magnitude
     bool scoop_mid_vertices = true;    // simplicial-embedding Steiner insertion
 };
 
