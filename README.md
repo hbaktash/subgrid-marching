@@ -183,7 +183,7 @@ Use `--inputSaveDir <path>` to save and inspect the preprocessed mesh.
 see the isosurface cross its faces an even number of times (the "even-sum"
 condition); when it holds, the per-tet boundary curves close up and the output is
 watertight and orientable. A non-zero count means some tets had an odd crossing
-parity, producing open curves — the output may then have small holes or be
+parity, producing open curves — the output may then have small holes, or have pinch vertices, or be
 non-orientable near those tets.
 
 The dominant cause is a **non-watertight input**: meshes with holes/boundaries
