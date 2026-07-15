@@ -98,6 +98,13 @@ int main(int argc, char** argv) {
             log_error("unknown SDF '" + args::get(inputSDFName) + "'. Use --listSDFs to see available options.");
             return EXIT_FAILURE;
         }
+        if (use_mesh) {
+            const std::string mesh_path = args::get(inputMeshFilename);
+            if (mesh_path.size() >= 4 && mesh_path.compare(mesh_path.size() - 4, 4, ".npz") == 0) {
+                log_error("'" + mesh_path + "' is a .npz; pass precomputed intersections with --npz, not -i (which expects a mesh: OBJ/PLY/OFF).");
+                return EXIT_FAILURE;
+            }
+        }
 
         // ---- run pipeline ----
         DualSubgridPipelineOpts opts;
