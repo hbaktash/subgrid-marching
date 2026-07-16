@@ -82,11 +82,6 @@ This builds only `subgrid`, `dualSubgrid`, and the tests. The interactive demos
 (`singleTetSubgrid`, `ringTetSubgrid`) and the on-screen viewer require the
 default `-DSUBGRID_POLYSCOPE_VIEWER=ON`.
 
-> **Note:** CMake caches this option per build directory, so switching an
-> existing `build/` between viewer and headless requires passing the flag
-> explicitly (e.g. `-DSUBGRID_POLYSCOPE_VIEWER=ON`) or configuring into a fresh
-> directory.
-
 ### Just want the algorithm? (no build, no dependencies)
 
 If you only need the **per-tet** primal/dual local constructions and don't want
