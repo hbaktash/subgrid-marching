@@ -64,7 +64,8 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ```
 
-All executables land in `build/`.
+All executables land in `build/`. The interactive Polyscope viewer is built by
+default (`-DSUBGRID_POLYSCOPE_VIEWER=ON`).
 
 ### Headless build (no Polyscope)
 
@@ -81,6 +82,11 @@ This builds only `subgrid`, `dualSubgrid`, and the tests. The interactive demos
 (`singleTetSubgrid`, `ringTetSubgrid`) and the on-screen viewer require the
 default `-DSUBGRID_POLYSCOPE_VIEWER=ON`.
 
+> **Note:** CMake caches this option per build directory, so switching an
+> existing `build/` between viewer and headless requires passing the flag
+> explicitly (e.g. `-DSUBGRID_POLYSCOPE_VIEWER=ON`) or configuring into a fresh
+> directory.
+
 ### Just want the algorithm? (no build, no dependencies)
 
 If you only need the **per-tet** primal/dual local constructions and don't want
@@ -91,11 +97,19 @@ single pure-Python file. Drop one file into your project and call
 
 ## Usage
 
-Both `subgrid` and `dualSubgrid` take exactly one type of input: a precomputed `.npz` of edge
-intersections (`--npz`), a triangle mesh file (`-i`), or a named built-in SDF (`-s`). 
-Run either executable with `--listSDFs` to print the available SDF names.
-With `--npz` the tet mesh and intersections come entirely from the file, so `-r` does not apply — see
-[explicit input format](docs/explicit_input_format.md) for the format and
+Both `subgrid` and `dualSubgrid` take a single input, supplied in one of three
+forms (pick exactly one):
+
+- a triangle mesh file (`-i`),
+- a named built-in SDF (`-s`) — run either executable with `--listSDFs` to print the available names, or
+- a precomputed `.npz` of edge intersections (`--npz`).
+
+With `-i` or `-s` the tet mesh is generated internally at resolution `-r`. With
+`--npz` the tet mesh and its edge–surface intersections come entirely from the
+file, so `-r` does not apply. The archive holds a tet mesh plus per-edge
+intersections in CSR layout — arrays `vertices`, `tets`, `edges`,
+`isect_offsets`, `isect_ts`, and (optionally, used by the dual) `isect_normals`.
+See [explicit input format](docs/explicit_input_format.md) for the full spec and
 [`data/npz/`](data/npz/) for examples.
 
 For what each pipeline accepts and produces per tet, see the

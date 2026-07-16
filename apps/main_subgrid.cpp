@@ -80,6 +80,22 @@ int main(int argc, char** argv) {
             save_output = true;
         }
 
+        // Warn early if the run will neither save nor show its result.
+#ifdef HAVE_POLYSCOPE
+        bool viewer_on = !noVisFlag;
+#else
+        bool viewer_on = false;
+#endif
+        if (!save_output && !viewer_on) {
+#ifdef HAVE_POLYSCOPE
+            log_warn("no --output given and the viewer is disabled (--noViz); the mesh will be "
+                     "computed but neither saved nor shown. Pass -o <file> to save it.");
+#else
+            log_warn("no --output given and this is a headless build (no viewer); the mesh will be "
+                     "computed but neither saved nor shown. Pass -o <file> to save it.");
+#endif
+        }
+
 #ifdef HAVE_POLYSCOPE
         if (!noVisFlag){
             polyscope::state::userCallback = myCallback;
@@ -157,20 +173,20 @@ int main(int argc, char** argv) {
             auto [mesh, geo] = makeSurfaceMeshAndGeometry(global_soup.faces, global_soup.vertices);
             mesh->greedilyOrientFaces();
 #ifdef HAVE_POLYSCOPE
-            if (!noVisFlag) polyscope::registerSurfaceMesh("Subgrid Output Mesh [COMB MERGRED]", geo->inputVertexPositions, mesh->getFaceVertexList())->setSurfaceColor({0.3, 0.6, 0.2})->setBackFacePolicy(polyscope::BackFacePolicy::Custom);
+            if (!noVisFlag) polyscope::registerSurfaceMesh("Subgrid Output Mesh", geo->inputVertexPositions, mesh->getFaceVertexList())->setSurfaceColor({0.3, 0.6, 0.2})->setBackFacePolicy(polyscope::BackFacePolicy::Custom);
 #endif
             if (save_output) writeSurfaceMesh(*mesh, *geo, filename, "obj");
         }
         else if (numerical_merge) {
             auto [mesh, geo] = mergeIdenticalVertices(EPS, global_soup.faces, global_soup.vertices);
 #ifdef HAVE_POLYSCOPE
-            if (!noVisFlag) polyscope::registerSurfaceMesh("Subgrid Output Mesh [NUMERICAL MERGE]", geo->inputVertexPositions, mesh->getFaceVertexList())->setSurfaceColor({0.3, 0.6, 0.2})->setBackFacePolicy(polyscope::BackFacePolicy::Custom);
+            if (!noVisFlag) polyscope::registerSurfaceMesh("Subgrid Output Mesh", geo->inputVertexPositions, mesh->getFaceVertexList())->setSurfaceColor({0.3, 0.6, 0.2})->setBackFacePolicy(polyscope::BackFacePolicy::Custom);
 #endif
             if (save_output) writeSurfaceMesh(*mesh, *geo, filename, "obj");
         }
         else {
 #ifdef HAVE_POLYSCOPE
-            if (!noVisFlag) polyscope::registerSurfaceMesh("Subgrid Output Mesh [NO MERGE]", global_soup.vertices, global_soup.faces)->setSurfaceColor({0.3, 0.6, 0.2})->setBackFacePolicy(polyscope::BackFacePolicy::Identical);
+            if (!noVisFlag) polyscope::registerSurfaceMesh("Subgrid Output Mesh", global_soup.vertices, global_soup.faces)->setSurfaceColor({0.3, 0.6, 0.2})->setBackFacePolicy(polyscope::BackFacePolicy::Identical);
 #endif
             if (save_output) save_polygon_soup_as_obj(filename, global_soup.vertices, global_soup.faces);
         }

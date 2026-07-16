@@ -78,6 +78,22 @@ int main(int argc, char** argv) {
             save_output = true;
         }
 
+        // Warn early if the run will neither save nor show its result.
+#ifdef HAVE_POLYSCOPE
+        bool viewer_on = !noVisFlag;
+#else
+        bool viewer_on = false;
+#endif
+        if (!save_output && !viewer_on) {
+#ifdef HAVE_POLYSCOPE
+            log_warn("no --output given and the viewer is disabled (--noViz); the mesh will be "
+                     "computed but neither saved nor shown. Pass -o <file> to save it.");
+#else
+            log_warn("no --output given and this is a headless build (no viewer); the mesh will be "
+                     "computed but neither saved nor shown. Pass -o <file> to save it.");
+#endif
+        }
+
 #ifdef HAVE_POLYSCOPE
         if (!noVisFlag){
             polyscope::state::userCallback = myCallback;
