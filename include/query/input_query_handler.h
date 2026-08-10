@@ -163,10 +163,13 @@ struct PreprocessedMeshData {
 };
 
 // Preprocess a raw input mesh in place: weld coincident vertices, triangulate,
-// normalize to fit inside the grid box, then apply a single fixed-seed rigid
-// translation to decorrelate the mesh from the axis-aligned grid. No per-vertex
-// jitter, so the mesh stays geometrically exact (welding/watertightness kept).
+// normalize to fit inside the grid box, then apply a single rigid translation
+// (seeded by `seed`) to decorrelate the mesh from the axis-aligned grid. No
+// per-vertex jitter, so the mesh stays geometrically exact (welding/watertightness
+// kept). `seed` controls the translation direction only; the default reproduces
+// the historical fixed offset.
 PreprocessedMeshData preprocess_input_mesh(
     SimplePolygonMesh& mesh,
-    double normalize_scale = 0.98
+    double normalize_scale = 0.98,
+    unsigned int seed = 1u
 );

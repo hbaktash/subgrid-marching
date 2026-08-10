@@ -46,6 +46,7 @@ int main(int argc, char** argv) {
     args::ValueFlag<std::string> inputNpzFilename(parser, "inputNpz", "Explicit tet mesh + precomputed intersections (.npz)", {"npz"});
     args::Flag noVisFlag(parser, "noVis", "Disable visualization", {"noViz"});
     args::Flag noProgBar(parser, "noProgBar", "Disable progress bar", {"noPBar"});
+    args::ValueFlag<unsigned int> seedFlag(parser, "seed", "Seed for the rigid decorrelation translation of mesh input (default 1)", {"seed"}, 1u);
     args::Flag listSDFsFlag(parser, "listSDFs", "List the available built-in SDF names and exit", {"listSDFs"});
 
     try {
@@ -150,7 +151,7 @@ int main(int argc, char** argv) {
             } else {
                 SimplePolygonMesh simpleMesh;
                 simpleMesh.readMeshFromFile(args::get(inputMeshFilename), "");
-                auto preprocessed = preprocess_input_mesh(simpleMesh);
+                auto preprocessed = preprocess_input_mesh(simpleMesh, /*normalize_scale=*/0.98, args::get(seedFlag));
                 if (inputSaveDir) {
                     save_polygon_soup_as_obj(args::get(inputSaveDir), preprocessed.positions, preprocessed.polygons);
                     return EXIT_SUCCESS;

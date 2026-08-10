@@ -137,7 +137,8 @@ void MeshQueryHandler::query_normal(
 
 PreprocessedMeshData preprocess_input_mesh(
     SimplePolygonMesh& mesh,
-    double normalize_scale
+    double normalize_scale,
+    unsigned int seed
 ) {
     // Weld coincident vertices first so that soup representations of watertight
     // meshes stay watertight (duplicated corners collapse to one vertex).
@@ -160,7 +161,7 @@ PreprocessedMeshData preprocess_input_mesh(
     // normalize_scale) is guaranteed to stay strictly inside the grid.
     {
         const double t_mag = (1.0 - normalize_scale) * 0.5; // 0.01 at scale 0.98
-        std::mt19937 rng(1u);                                // fixed seed for reproducibility
+        std::mt19937 rng(seed);                              // default 1u reproduces the historical offset
         std::normal_distribution<double> gaussian(0.0, 1.0);
         Vector3 dir{gaussian(rng), gaussian(rng), gaussian(rng)};
         double nrm = dir.norm();
