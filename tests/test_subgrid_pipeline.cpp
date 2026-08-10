@@ -51,11 +51,12 @@ static std::unique_ptr<InputQueryHandler> make_mesh_handler(const std::string& p
     return std::make_unique<MeshQueryHandler>(pre.positions, pre.polygons);
 }
 
-static SubgridPipelineResult run_for_input(const TestInput& input, size_t res) {
+static SubgridPipelineResult run_for_input(const TestInput& input, size_t res,
+                                           const SubgridPipelineOpts& opts = {}) {
     if (input.is_npz())
-        return run_subgrid_pipeline_npz(input.npz_path);
+        return run_subgrid_pipeline_npz(input.npz_path, opts);
     auto handler = input.make_handler();
-    return run_subgrid_pipeline(*handler, res);
+    return run_subgrid_pipeline(*handler, res, opts);
 }
 
 static std::vector<TestInput> all_pipeline_inputs() {
@@ -159,6 +160,37 @@ TEST_CASE("Subgrid pipeline: comb-merge : manifold, orientable",
 
     CombMergeGuard guard(true);
     auto result = run_for_input(input, res);
+    auto& soup = result.soup;
+    if (soup.faces.empty()) SKIP("No faces produced");
+    check_soup(soup);
+
+    auto [mesh, geo] = makeSurfaceMeshAndGeometry(soup.faces, soup.vertices);
+
+    REQUIRE(mesh != nullptr);
+    CHECK(check_edge_manifoldness(*mesh));
+    if (result.non_even_tets == 0){
+        mesh->greedilyOrientFaces();
+        CHECK(mesh->isOriented());
+    }
+}
+
+// Greedy construction (`--greedy`) fans each boundary curve directly instead of
+// filling it with the intersection-free spanning disk. Each fan is still a
+// topological disk glued along the same shared boundary loops, so under exact
+// combinatorial merge the output stays edge-manifold and orientable (the greedy
+// tradeoff is geometric — possible self-intersections — not topological).
+TEST_CASE("Subgrid pipeline: greedy comb-merge : manifold, orientable",
+          "[subgrid_pipeline][greedy]") {
+    auto tc = GENERATE_COPY(from_range(all_pipeline_cases()));
+    const auto& input = tc.input;
+    auto res = tc.res;
+    INFO("input: " << input.name << (input.is_npz() ? "  (npz, own resolution)"
+                                                    : "  res: " + std::to_string(res)));
+
+    SubgridPipelineOpts opts;
+    opts.greedy = true;
+    CombMergeGuard guard(true);
+    auto result = run_for_input(input, res, opts);
     auto& soup = result.soup;
     if (soup.faces.empty()) SKIP("No faces produced");
     check_soup(soup);

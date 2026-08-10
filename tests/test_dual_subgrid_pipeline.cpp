@@ -1,5 +1,6 @@
 #include <catch2/catch_all.hpp>
 
+#include <cmath>
 #include <filesystem>
 #include <functional>
 #include <memory>
@@ -57,11 +58,12 @@ static std::unique_ptr<InputQueryHandler> make_mesh_handler(const std::string& p
     return std::make_unique<MeshQueryHandler>(pre.positions, pre.polygons);
 }
 
-static DualSubgridPipelineResult run_dual_for_input(const TestInput& input, size_t res) {
+static DualSubgridPipelineResult run_dual_for_input(const TestInput& input, size_t res,
+                                                    const DualSubgridPipelineOpts& opts = {}) {
     if (input.is_npz())
-        return run_dual_subgrid_pipeline_npz(input.npz_path);
+        return run_dual_subgrid_pipeline_npz(input.npz_path, opts);
     auto handler = input.make_handler();
-    return run_dual_subgrid_pipeline(*handler, res);
+    return run_dual_subgrid_pipeline(*handler, res, opts);
 }
 
 static std::vector<TestInput> all_dual_inputs() {
@@ -85,6 +87,24 @@ static std::vector<DualCase> all_dual_cases() {
         if (in.is_npz()) cases.push_back({in, 0});
         else { cases.push_back({in, 16}); cases.push_back({in, 32}); }
     }
+    return cases;
+}
+
+// Inputs for the no-normal (centroid) dual mode. Unlike the QEF path this needs
+// no intersection normals, so it also covers normal-free npz files (which the
+// QEF cases skip).
+static std::vector<DualCase> all_dual_cases_no_normal() {
+    std::vector<DualCase> cases;
+    for (const char* sdf : {"Sphere", "Girl", "Cables", "Teapot", "UprightPiano", "Cube", "GrandPiano"}) {
+        TestInput in{sdf, [=]{ return std::make_unique<SDFQueryHandler>(sdf, 1e-2f); }, ""};
+        cases.push_back({in, 16}); cases.push_back({in, 32});
+    }
+    for (const auto& path : find_files_with_ext(TEST_DATA_DIR, {".obj", ".ply", ".stl", ".off"})) {
+        TestInput in{fs::path(path).stem().string(), [=]{ return make_mesh_handler(path); }, ""};
+        cases.push_back({in, 16}); cases.push_back({in, 32});
+    }
+    for (const auto& path : find_files_with_ext(TEST_NPZ_DIR, {".npz"})) // with or without normals
+        cases.push_back({{"npz:" + fs::path(path).stem().string(), nullptr, path}, 0});
     return cases;
 }
 
@@ -158,4 +178,42 @@ TEST_CASE("Dual Subgrid pipeline: dual mesh can be constructed",
     REQUIRE(dual_mesh != nullptr);
     CHECK(dual_mesh->nFaces() > 0);
     CHECK(dual_mesh->nVertices() > 0);
+}
+
+// No-normal mode places each dual point at its boundary-polygon centroid instead
+// of solving the QEF. Topology is independent of normals, so the primal mesh must
+// still be manifold/edge-manifold; the dual points must all be finite and defined.
+// This also covers normal-free npz inputs, which the QEF cases above skip.
+TEST_CASE("Dual Subgrid pipeline (no-normal): primal manifold, dual points finite",
+          "[dual_subgrid_pipeline][noNormal]") {
+    auto tc = GENERATE_COPY(from_range(all_dual_cases_no_normal()));
+    const auto& input = tc.input;
+    auto res = tc.res;
+    INFO("input: " << input.name << (input.is_npz() ? "  (npz, own resolution)"
+                                                    : "  res: " + std::to_string(res)));
+
+    DualSubgridPipelineOpts opts;
+    opts.no_normal = true;
+    auto result = run_dual_for_input(input, res, opts);
+
+    if (result.soup.faces.empty())
+        SKIP("No polygons produced");
+
+    auto [mesh, geo] = construct_primal_mesh_from_face_per_edge_data(
+        result.soup.faces, result.soup.vertices, result.soup.faces_per_edge
+    );
+    MeshOwner owner{mesh, geo};
+
+    REQUIRE(mesh != nullptr);
+    CHECK(mesh->isManifold());
+    CHECK(check_edge_manifoldness(*mesh));
+
+    // One dual point per polygon; every defined centroid must be finite.
+    REQUIRE(result.soup.dual_positions.size() == result.soup.faces.size());
+    for (const auto& dp : result.soup.dual_positions) {
+        if (!dp.isDefined()) continue; // degenerate (<2-vertex) polygons carry no dual point
+        CHECK(std::isfinite(dp.x));
+        CHECK(std::isfinite(dp.y));
+        CHECK(std::isfinite(dp.z));
+    }
 }
