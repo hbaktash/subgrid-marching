@@ -89,7 +89,10 @@ additionally records:
 - **`dual_positions`** — one dual point per polygon, placed by a QEF
   ("dual contouring") solve over the polygon's intersection points and normals,
   which recovers sharp features. Regularized by `reg_alpha`; optionally clipped
-  back inside the tet with `project_duals`.
+  back inside the tet with `project_duals`. When normals are unavailable or
+  unwanted (`--noNormal`), the QEF is skipped and each dual point is placed at its
+  boundary-polygon centroid — the same point the QEF uses as its regularization
+  target.
 
 ## Entry points
 

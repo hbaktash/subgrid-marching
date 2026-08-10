@@ -147,8 +147,10 @@ Polyscope window opens after extraction unless `--noViz` is given.
 ./build/dualSubgrid --npz <hits.npz>              -o <output.obj>  [options]
 ```
 
-> **Note:** When using `--npz` input, the `.npz` file **must include per-intersection normal information** 
-in addition to the standard edge intersection data. See [explicit input format documentation](docs/explicit_input_format.md) for details.
+> **Note:** The dual QEF solve needs a normal per intersection, so with `--npz`
+> input the `.npz` should include `isect_normals` (see [explicit input format](docs/explicit_input_format.md)).
+> If it doesn't, pass `--noNormal` to place each dual vertex at its boundary-polygon
+> centroid instead of solving the QEF.
 
 
 Flags shared with `subgrid` (`-i`, `-s`, `--npz`, `-r`, `-o`, `--mod2`, `--noViz`,
@@ -160,6 +162,7 @@ Additional flags:
 |------|---------|-------------|
 | `-a, --alpha` | 0.1 | QEF regularization — higher values pull dual vertices toward the polygon centroid |
 | `--pd, --projectDuals` | off | Clip each dual vertex back inside its local grid cell |
+| `--noNormal` | off | Skip the QEF solve — place each dual vertex at its boundary-polygon centroid. No normals needed (required for `.npz` inputs without `isect_normals`) |
 
 The dual mesh is written to exactly the `-o` path.
 
