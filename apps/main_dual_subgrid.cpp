@@ -41,6 +41,7 @@ int main(int argc, char** argv) {
     args::Flag mod2Flag(parser, "mod2", "Use mod2 intersection reduction before dual construction", {"mod2"});
     args::ValueFlag<double> regAlpha(parser, "regAlpha", "Regularization alpha parameter (default: 0.1)", {'a', "alpha"}, 0.1);
     args::Flag projectDuals(parser, "projectDuals", "Project dual vertices to the local grid cell", {"pd", "projectDuals"});
+    args::Flag noNormalFlag(parser, "noNormal", "Ignore normals: place each dual point at the boundary-polygon centroid instead of solving a QEF (required for .npz inputs without normals)", {"noNormal"});
     args::ValueFlag<std::string> inputSaveDir(parser, "inputSaveDir", "Save scaled/preprocessed input mesh to this path and exit (mesh mode only)", {"inputSaveDir"});
     args::ValueFlag<std::string> inputNpzFilename(parser, "inputNpz", "Explicit tet mesh + precomputed intersections (.npz)", {"npz"});
     args::Flag noVisFlag(parser, "noVis", "Disable visualization", {"noViz"});
@@ -129,10 +130,14 @@ int main(int argc, char** argv) {
         opts.show_progress = !noProgBar;
         opts.reg_alpha = args::get(regAlpha);
         opts.project_duals = args::get(projectDuals);
+        opts.no_normal = noNormalFlag;
 
-        std::cout << " dual solver: alpha=" << opts.reg_alpha
-                  << ", projectDuals=" << (opts.project_duals ? "true" : "false")
-                  << ", mod2=" << (opts.mod2 ? "true" : "false") << "\n";
+        if (opts.no_normal)
+            std::cout << " dual solver: no-normal (centroid), mod2=" << (opts.mod2 ? "true" : "false") << "\n";
+        else
+            std::cout << " dual solver: alpha=" << opts.reg_alpha
+                      << ", projectDuals=" << (opts.project_duals ? "true" : "false")
+                      << ", mod2=" << (opts.mod2 ? "true" : "false") << "\n";
 
         DualSubgridPipelineResult result;
 

@@ -6,6 +6,8 @@
 // Per-tet dual subgrid construction: from boundary curves + intersection data,
 // builds a TriangleSoup with positions, faces, faces_per_edge, signatures, and
 // dual_positions (QEF-solved), remapped to global tet indices.
+// When use_normals is false, normals are ignored and each dual point is placed
+// at the boundary-polygon centroid instead of solving a QEF.
 TriangleSoup
 dual_subgrid_surface(
     const std::array<Vector3,4>& tet_positions,
@@ -16,7 +18,8 @@ dual_subgrid_surface(
     const std::vector<CombFace>& scoop_curves,
     const std::vector<CombFace>& normal_curves,
     double reg_alpha,
-    bool project_duals
+    bool project_duals,
+    bool use_normals = true
 );
 
 

@@ -16,14 +16,19 @@ dual_subgrid_surface(
     const std::vector<CombFace>& scoop_curves,
     const std::vector<CombFace>& normal_curves,
     double reg_alpha,
-    bool project_duals
+    bool project_duals,
+    bool use_normals
 ){
     vector<CombFace> curves;
     for (const auto& c : scoop_curves) curves.push_back(c);
     for (const auto& c : normal_curves) curves.push_back(c);
     if (curves.empty()) return {};
 
-    auto normals = normals_from_cv_polygons(curves, edge_isect_ts, edge_isect_normals);
+    // In no-normal mode we leave `normals` empty; QEF_from_boundary_polygons then
+    // places each dual point at the boundary-polygon centroid.
+    std::vector<Vector3> normals;
+    if (use_normals)
+        normals = normals_from_cv_polygons(curves, edge_isect_ts, edge_isect_normals);
     TriangleSoup soup = build_dual_local_soup(curves, tet_positions, edge_isect_ts);
 
     soup.dual_positions = dual_positions_from_isect_data(

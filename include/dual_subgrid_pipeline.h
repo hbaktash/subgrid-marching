@@ -15,6 +15,8 @@ struct DualSubgridPipelineOpts {
     bool show_progress = false;    // print a progress bar during the tet loop
     double reg_alpha = 0.1;        // QEF regularization weight
     bool project_duals = false;    // clip dual points back inside the tet
+    bool no_normal = false;        // ignore normals: place each dual point at the
+                                   // boundary-polygon centroid instead of solving a QEF
 };
 
 struct DualSubgridPipelineResult {

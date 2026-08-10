@@ -42,9 +42,10 @@ static DualSubgridPipelineResult run_dual_subgrid_impl(
         start_time = clock_now();
         array<vector<double>,6>  edge_isect_ts;
         array<vector<Vector3>,6> edge_isect_normals;
-        // dual pipeline needs intersection normals for the QEF solve
+        // dual pipeline needs intersection normals for the QEF solve, unless
+        // running in no-normal (centroid) mode
         handler.query_intersections(tet_indices, tet_positions, edge_isect_ts, edge_isect_normals,
-                                    opts.use_robust, /*recordNormals=*/true);
+                                    opts.use_robust, /*recordNormals=*/!opts.no_normal);
         end_time = clock_now();
         result.isect_time += duration<double>(end_time - start_time).count();
 
@@ -69,7 +70,7 @@ static DualSubgridPipelineResult run_dual_subgrid_impl(
         TriangleSoup local_soup = dual_subgrid_surface(
             tet_positions, tet_indices, edge_isect_ts, edge_isect_normals,
             open_curves, scoop_curves, normal_curves,
-            opts.reg_alpha, opts.project_duals
+            opts.reg_alpha, opts.project_duals, /*use_normals=*/!opts.no_normal
         );
         if (local_soup.faces.empty()) continue;
         result.soup.add_local_soup(local_soup);
@@ -94,6 +95,10 @@ DualSubgridPipelineResult run_dual_subgrid_pipeline_npz(
     auto npz = load_npz(npz_path);
     ExplicitTetRange tet_range(npz["vertices"], npz["tets"]);
     const NpyArray* normals_ptr = npz.has("isect_normals") ? &npz["isect_normals"] : nullptr;
+    if (normals_ptr == nullptr && !opts.no_normal)
+        throw std::runtime_error(
+            "npz has no 'isect_normals' array; the dual QEF solve needs normals. "
+            "Pass --noNormal to place dual points at boundary-polygon centroids instead.");
     PrecomputedQueryHandler handler(npz["edges"], npz["isect_offsets"], npz["isect_ts"], normals_ptr);
     return run_dual_subgrid_impl(tet_range, handler, opts);
 }

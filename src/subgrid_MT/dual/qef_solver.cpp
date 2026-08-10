@@ -9,6 +9,11 @@ QEF_from_boundary_polygons(
     const std::vector<Vector3>& normals,
     double regularizer_weight
 ){
+    // No-normal mode: with an empty `normals` array we skip the QEF entirely and
+    // place each dual point at the boundary-polygon centroid (the same point used
+    // as the QEF regularization target).
+    const bool use_normals = !normals.empty();
+
     std::vector<Vector3> dual_points;
     for (const auto& poly: polygons){
         if (poly.size() < 2){
@@ -20,9 +25,14 @@ QEF_from_boundary_polygons(
         for (size_t vidx: poly){
             poly_positions.push_back(vector3_to_eigen(positions[vidx]));
             avg_pos += vector3_to_eigen(positions[vidx]);
-            poly_normals.push_back(vector3_to_eigen(normals[vidx]));
+            if (use_normals)
+                poly_normals.push_back(vector3_to_eigen(normals[vidx]));
         }
         avg_pos /= static_cast<double>(poly.size());
+        if (!use_normals){
+            dual_points.push_back(eigen_to_vector3(avg_pos));
+            continue;
+        }
         Eigen::Matrix3d A = Eigen::Matrix3d::Zero();
         Eigen::Vector3d b = Eigen::Vector3d::Zero();
         for (size_t i = 0; i < poly.size(); i++){
