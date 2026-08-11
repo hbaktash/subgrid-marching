@@ -22,6 +22,11 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 # GUI-only demos (singleTetSubgrid / ringTetSubgrid) require this.
 option(SUBGRID_POLYSCOPE_VIEWER "Build with the interactive Polyscope viewer" ON)
 
+# Build the exact CGAL (EPECK) mesh query handler, selectable at runtime with
+# --cgal. OFF by default: it pulls in CGAL + Boost + GMP + MPFR. When OFF, no
+# CGAL code is compiled and the pipeline is unchanged.
+option(SUBGRID_WITH_CGAL "Build the exact CGAL (EPECK) mesh query handler (--cgal)" OFF)
+
 # Dependencies
 include(geometry-central)
 if(SUBGRID_POLYSCOPE_VIEWER)
@@ -56,6 +61,7 @@ set(SRC_FILES
     src/subgrid_MT/dual/dual_construction.cpp
     src/query/input_query_handler.cpp
     src/query/precomputed_query_handler.cpp
+    src/query/cgal_queries.cpp
     src/subgrid_MT/boundary_curve.cpp
     src/common/triangle_soup.cpp
     src/subgrid_MT/cv_interpolation.cpp
@@ -86,6 +92,18 @@ if (TARGET fcpw::fcpw)
   target_link_libraries(normal_coordinates PUBLIC fcpw::fcpw)
   target_compile_definitions(normal_coordinates PUBLIC HAVE_FCPW=1)
   target_compile_definitions(normal_coordinates PUBLIC GLM_ENABLE_EXPERIMENTAL GLM_FORCE_SWIZZLE)
+endif()
+
+# Exact CGAL (EPECK) query handler. HAVE_CGAL is PUBLIC so the apps' --cgal
+# wiring sees it; the CGAL/Boost link stays PRIVATE (kept out of the pImpl header).
+if(SUBGRID_WITH_CGAL)
+  find_package(CGAL REQUIRED)
+  target_link_libraries(normal_coordinates PRIVATE CGAL::CGAL)
+  target_compile_definitions(normal_coordinates PUBLIC HAVE_CGAL=1)
+  # Correct interval arithmetic in CGAL's exact filters (GCC/Clang only).
+  target_compile_options(normal_coordinates PRIVATE
+    $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-frounding-math>)
+  message(STATUS "subgrid: CGAL ${CGAL_VERSION} -> exact --cgal query handler enabled.")
 endif()
 
 # ChatGPT'd the hell outta this part

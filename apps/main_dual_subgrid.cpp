@@ -5,6 +5,7 @@
 
 #include "assembly/dual_mesh_assembly.h"
 #include "query/input_query_handler.h"
+#include "query/cgal_queries.h"
 
 #include "dual_subgrid_pipeline.h"
 
@@ -47,6 +48,7 @@ int main(int argc, char** argv) {
     args::Flag noVisFlag(parser, "noVis", "Disable visualization", {"noViz"});
     args::Flag noProgBar(parser, "noProgBar", "Disable progress bar", {"noPBar"});
     args::ValueFlag<unsigned int> seedFlag(parser, "seed", "Seed for the rigid decorrelation translation of mesh input (default 1)", {"seed"}, 1u);
+    args::Flag cgalFlag(parser, "cgal", "Use exact CGAL (EPECK) intersection queries for mesh input (requires build -DSUBGRID_WITH_CGAL=ON)", {"cgal"});
     args::Flag listSDFsFlag(parser, "listSDFs", "List the available built-in SDF names and exit", {"listSDFs"});
 
     try {
@@ -123,6 +125,16 @@ int main(int argc, char** argv) {
                 return EXIT_FAILURE;
             }
         }
+        if (cgalFlag) {
+#ifndef HAVE_CGAL
+            log_error("--cgal requires building with -DSUBGRID_WITH_CGAL=ON.");
+            return EXIT_FAILURE;
+#endif
+            if (!use_mesh) {
+                log_error("--cgal applies only to mesh input (-i).");
+                return EXIT_FAILURE;
+            }
+        }
 
         // ---- run pipeline ----
         DualSubgridPipelineOpts opts;
@@ -160,7 +172,14 @@ int main(int argc, char** argv) {
                 if (!noVisFlag)
                     polyscope::registerSurfaceMesh("Input Mesh", preprocessed.positions, preprocessed.polygons)->setEnabled(false);
 #endif
+#ifdef HAVE_CGAL
+                if (cgalFlag)
+                    query_handler = std::make_unique<CGALQueryHandler>(preprocessed.positions, preprocessed.polygons);
+                else
+                    query_handler = std::make_unique<MeshQueryHandler>(preprocessed.positions, preprocessed.polygons);
+#else
                 query_handler = std::make_unique<MeshQueryHandler>(preprocessed.positions, preprocessed.polygons);
+#endif
             }
             result = run_dual_subgrid_pipeline(*query_handler, args::get(tetGridResolution), opts);
         }
