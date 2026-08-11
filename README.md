@@ -46,6 +46,7 @@ or exist as submodules (`geometry-central`, `sdf-dataset`):
 - [sdf-dataset](https://github.com/GeometryCollective/sdf-dataset) — built-in signed distance functions (submodule)
 - [polyscope](https://github.com/nmwsharp/polyscope) — visualization (fetched by CMake; **optional**, see below)
 - [fcpw](https://github.com/rohan-sawhney/fcpw) — BVH ray queries (fetched by CMake)
+- [CGAL](https://www.cgal.org) — exact (EPECK) mesh intersection queries (**optional**, only with `-DSUBGRID_WITH_CGAL=ON`; the CGAL release is fetched + pinned by CMake, but its Boost/GMP/MPFR must be installed)
 - [Eigen](https://eigen.tuxfamily.org) — linear algebra (via geometry-central)
 - C++17 compiler
 
@@ -81,6 +82,11 @@ cmake --build build -j
 This builds only `subgrid`, `dualSubgrid`, and the tests. The interactive demos
 (`singleTetSubgrid`, `ringTetSubgrid`) and the on-screen viewer require the
 default `-DSUBGRID_POLYSCOPE_VIEWER=ON`.
+
+There is also an optional exact-arithmetic build (`-DSUBGRID_WITH_CGAL=ON`, off
+by default) for more robust mesh intersections; see
+[Robust queries (CGAL)](#robust-queries-cgal) for details and the system
+packages it needs.
 
 ### Just want the algorithm? (no build, no dependencies)
 
@@ -125,6 +131,8 @@ For what each pipeline accepts and produces per tet, see the
 | `--npz` | — | Explicit tet mesh + precomputed edge intersections (`.npz`); `-r` is ignored |
 | `-r, --tetGridResolution` | 64 | Grid resolution — builds an n³ cube grid (5n³ tetrahedra) |
 | `-o, --output` | — | Output mesh path; if omitted, result is only visualized |
+| `--cgal` | off | Use exact CGAL (EPECK) intersections for mesh input; requires `-DSUBGRID_WITH_CGAL=ON` (see [non-even tets](#a-note-on-non-even-open-tets)) |
+| `--seed` | 1 | Seed for the fixed input-perturbation offset (mesh input) |
 
 **Vertex merging** is set by two flags: the default is exact **combinatorial**
 merge; `--mergeEPS <eps>` (with `eps ≥ 0`) switches to positional **numerical**
@@ -154,7 +162,7 @@ Polyscope window opens after extraction unless `--noViz` is given.
 
 
 Flags shared with `subgrid` (`-i`, `-s`, `--npz`, `-r`, `-o`, `--mod2`, `--noViz`,
-`--noPBar`, `--inputSaveDir`) behave identically.
+`--noPBar`, `--inputSaveDir`, `--cgal`, `--seed`) behave identically.
 
 Additional flags:
 
@@ -186,6 +194,8 @@ When a mesh file is provided, the input is automatically:
    axis-alignment with the grid and avoid degenerate ray/grid coincidences. The
    offset is half the grid-boundary clearance, so the mesh always stays inside
    the grid. Unlike per-vertex jitter, this keeps the mesh geometrically exact.
+   The offset direction is drawn from a fixed seed (`--seed`, default `1`), so
+   changing it yields a different perturbation.
 
 Use `--inputSaveDir <path>` to save and inspect the preprocessed mesh.
 
@@ -202,9 +212,31 @@ The dominant cause is a **non-watertight input**: meshes with holes/boundaries
 will report some non-even tets, and that is expected. A
 watertight input (even if self-intersecting) — even one stored as a triangle soup — should report
 `non-even tets: 0`. A small residual count on an otherwise-closed mesh usually
-reflects near-degenerate ray/grid intersections at that resolution; trying a
-different resolution typically resolves it. A more robust ray intersection implementation 
-in the future should resolve such cases.
+reflects near-degenerate ray/grid intersections at that resolution. Quick ways
+to reduce it are: (a) slightly changing the resolution `-r`, or (b) changing the
+`--seed` to use a different input perturbation.
+See below (Robust queries) for a non-quick way.
+
+### Robust queries (CGAL)
+
+For mesh input (`-i`), an exact edge–surface intersection query handler using
+[**CGAL's EPECK**](https://doc.cgal.org/latest/Kernel_23/index.html) exact
+predicates is available as an optional build. On almost every tested example this
+drives the non-even count to zero, at roughly ~5× the intersection-query cost of
+the default FCPW handler. It is off by default; without `--cgal` the pipeline is
+unchanged.
+
+Build it with `-DSUBGRID_WITH_CGAL=ON`, then pass `--cgal` at runtime:
+
+The CGAL release itself is fetched and version-pinned by CMake (see
+[`cmake/cgal.cmake`](cmake/cgal.cmake)), so it does not depend on any
+system-installed CGAL. Its exact kernels do require **Boost (≥ 1.72), GMP
+(≥ 4.2), and MPFR (≥ 2.2.1)** on the system:
+
+```sh
+brew install boost gmp mpfr                            # macOS
+sudo apt install libboost-dev libgmp-dev libmpfr-dev   # Debian/Ubuntu
+```
 
 ## A note on self-intersections
 
@@ -236,6 +268,3 @@ If you use this code in your research, please cite:
 ## License
 
 This project is released under the [MIT License](LICENSE).
-
-Dependencies are subject to their own licenses (all permissive — MIT, BSD, or
-similar). See each dependency's repository for details.

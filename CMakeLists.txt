@@ -97,13 +97,14 @@ endif()
 # Exact CGAL (EPECK) query handler. HAVE_CGAL is PUBLIC so the apps' --cgal
 # wiring sees it; the CGAL/Boost link stays PRIVATE (kept out of the pImpl header).
 if(SUBGRID_WITH_CGAL)
-  find_package(CGAL REQUIRED)
+  # Pinned, CPM-fetched CGAL (see cmake/cgal.cmake); not the system install.
+  include(cgal)
   target_link_libraries(normal_coordinates PRIVATE CGAL::CGAL)
   target_compile_definitions(normal_coordinates PUBLIC HAVE_CGAL=1)
   # Correct interval arithmetic in CGAL's exact filters (GCC/Clang only).
   target_compile_options(normal_coordinates PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-frounding-math>)
-  message(STATUS "subgrid: CGAL ${CGAL_VERSION} -> exact --cgal query handler enabled.")
+  message(STATUS "subgrid: CGAL ${CGAL_VERSION} (pinned ${SUBGRID_CGAL_VERSION}) -> exact --cgal query handler enabled.")
 endif()
 
 # ChatGPT'd the hell outta this part

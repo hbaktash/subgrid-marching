@@ -35,7 +35,10 @@ Three interchangeable front-ends produce the per-tet edge data:
 
 - **Triangle mesh** (OBJ/OFF/PLY) — `MeshQueryHandler`. Intersections and normals
   are found by casting a ray along each tet edge through an FCPW BVH. This needs
-  no inside/outside test and no consistent surface orientation.
+  no inside/outside test and no consistent surface orientation. An exact
+  alternative, `CGALQueryHandler` (CGAL EPECK, `--cgal`, optional build), reports
+  the same per-edge data using exact predicates; see the README for when to use
+  it.
 - **Closed-form SDF** — `SDFQueryHandler`. Marches along each edge with a minimum
   step and brackets sign changes.
 - **Explicit tet mesh + precomputed intersections** (`.npz`) —
