@@ -65,7 +65,64 @@ struct CGALQueryHandler::Impl {
     std::vector<Triangle> triangles;
     std::vector<Vector3>  tri_normals;   // geometric face normal (double), parallel to triangles
     std::unique_ptr<Tree> tree;
+
+    // Surface crossings of a single segment a->b, written into out_ts (and
+    // matching face normals into out_normals when record_normals). Outputs are
+    // cleared first and returned sorted ascending with exactly-coincident hits
+    // deduped, all t in [0, 1]. This is the per-edge unit query_intersections
+    // runs over each tet edge.
+    void edge_intersections(const Vector3& a, const Vector3& b, bool record_normals,
+                            std::vector<double>& out_ts,
+                            std::vector<Vector3>& out_normals);
 };
+
+void CGALQueryHandler::Impl::edge_intersections(
+    const Vector3& a, const Vector3& b, bool record_normals,
+    std::vector<double>& out_ts, std::vector<Vector3>& out_normals
+) {
+    out_ts.clear();
+    out_normals.clear();
+
+    Point op(a.x, a.y, a.z), ep(b.x, b.y, b.z);
+    if (op == ep) return;   // degenerate zero-length edge
+
+    const CVec d = ep - op;
+    const FT   dd = d * d;   // squared length (> 0 here)
+
+    std::vector<IntersectionResult> hits;
+    tree->all_intersections(Segment(op, ep), std::back_inserter(hits));
+
+    // Collect (exact t, triangle index). A Segment_3 result is a coplanar overlap
+    // (measure zero under grid decorrelation, topologically ambiguous as a
+    // crossing) and is ignored; only Point_3 transversal hits count.
+    std::vector<std::pair<FT, size_t>> found;
+    for (const auto& r : hits) {
+        if (!r) continue;
+        if (const Point* p = intersection_get<Point>(&(r->first))) {
+            const FT t = ((*p - op) * d) / dd;   // exact projection parameter
+            if (t >= FT(0) && t <= FT(1)) {
+                size_t idx = static_cast<size_t>(std::distance(triangles.begin(), r->second));
+                found.emplace_back(t, idx);
+            }
+        }
+    }
+
+    std::sort(found.begin(), found.end(),
+              [](const std::pair<FT,size_t>& x, const std::pair<FT,size_t>& y) {
+                  return x.first < y.first;
+              });
+
+    // Exact dedup: crossings exactly on a shared triangle edge/vertex are reported
+    // once per incident triangle; collapse them to one crossing.
+    for (size_t k = 0; k < found.size(); ++k) {
+        if (k > 0 && found[k].first == found[k - 1].first) continue;
+        double td = CGAL::to_double(found[k].first);
+        td = std::min(1.0, std::max(0.0, td));
+        out_ts.push_back(td);
+        if (record_normals)
+            out_normals.push_back(tri_normals[found[k].second]);
+    }
+}
 
 CGALQueryHandler::CGALQueryHandler(
     const std::vector<Vector3>& pos,
@@ -103,50 +160,9 @@ void CGALQueryHandler::query_intersections(
     bool recordNormals
 ) {
     for (int e = 0; e < 6; ++e) {
-        edge_isect_ts[e].clear();
-        edge_isect_normals[e].clear();
-
         const Vector3& a = tet_positions[ALL_TET_PAIRS[e].first];
         const Vector3& b = tet_positions[ALL_TET_PAIRS[e].second];
-        Point op(a.x, a.y, a.z), ep(b.x, b.y, b.z);
-        if (op == ep) continue;   // degenerate zero-length edge
-
-        const CVec d = ep - op;
-        const FT   dd = d * d;     // squared length (> 0 here)
-
-        std::vector<IntersectionResult> hits;
-        impl->tree->all_intersections(Segment(op, ep), std::back_inserter(hits));
-
-        // Collect (exact t, triangle index). A Segment_3 result is a coplanar
-        // overlap (measure zero under grid decorrelation, topologically ambiguous
-        // as a crossing) and is ignored; only Point_3 transversal hits count.
-        std::vector<std::pair<FT, size_t>> found;
-        for (const auto& r : hits) {
-            if (!r) continue;
-            if (const Point* p = intersection_get<Point>(&(r->first))) {
-                const FT t = ((*p - op) * d) / dd;   // exact projection parameter
-                if (t >= FT(0) && t <= FT(1)) {
-                    size_t idx = static_cast<size_t>(std::distance(impl->triangles.begin(), r->second));
-                    found.emplace_back(t, idx);
-                }
-            }
-        }
-
-        std::sort(found.begin(), found.end(),
-                  [](const std::pair<FT,size_t>& x, const std::pair<FT,size_t>& y) {
-                      return x.first < y.first;
-                  });
-
-        // Exact dedup: crossings exactly on a shared triangle edge/vertex are
-        // reported once per incident triangle; collapse them to one crossing.
-        for (size_t k = 0; k < found.size(); ++k) {
-            if (k > 0 && found[k].first == found[k - 1].first) continue;
-            double td = CGAL::to_double(found[k].first);
-            td = std::min(1.0, std::max(0.0, td));
-            edge_isect_ts[e].push_back(td);
-            if (recordNormals)
-                edge_isect_normals[e].push_back(impl->tri_normals[found[k].second]);
-        }
+        impl->edge_intersections(a, b, recordNormals, edge_isect_ts[e], edge_isect_normals[e]);
     }
 }
 
