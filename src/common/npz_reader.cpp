@@ -152,33 +152,64 @@ NpzFile load_npz(const std::string& path) {
         if (!file.read(sig, 4)) break;
         if (std::memcmp(sig, "PK\x03\x04", 4) != 0) break;
 
-        // Skip to filename length and extra length fields
-        file.seekg(22, std::ios::cur); // skip rest of fixed header (26 bytes total - 4 sig = 22)
-        uint16_t fname_len, extra_len;
-        file.read(reinterpret_cast<char*>(&fname_len), 2);
-        file.read(reinterpret_cast<char*>(&extra_len), 2);
+        // Read the remaining 26 bytes of the fixed local file header.
+        char hdr[26];
+        if (!file.read(hdr, 26)) break;
+        uint16_t flag, method, fname_len, extra_len;
+        uint32_t csize32, usize32;
+        std::memcpy(&flag,      hdr + 2,  2);
+        std::memcpy(&method,    hdr + 4,  2);
+        std::memcpy(&csize32,   hdr + 14, 4);
+        std::memcpy(&usize32,   hdr + 18, 4);
+        std::memcpy(&fname_len, hdr + 22, 2);
+        std::memcpy(&extra_len, hdr + 24, 2);
 
-        // Read filename
+        // Read filename and extra field.
         std::string fname(fname_len, '\0');
         file.read(&fname[0], fname_len);
+        std::vector<char> extra(extra_len);
+        if (extra_len) file.read(extra.data(), extra_len);
 
-        // Skip extra field
-        file.seekg(extra_len, std::ios::cur);
+        if (method != 0)
+            throw std::runtime_error("npz_reader: '" + fname + "' is deflate-compressed; "
+                "save with numpy.savez (not savez_compressed)");
 
-        // We need the compressed size to know how much data to read.
-        // Go back and read it from the fixed header.
-        auto current_pos = file.tellg();
-        file.seekg(-(std::streamoff)(fname_len + extra_len + 4 + 22), std::ios::cur);
-        // Now at offset 4 from start of this header. Skip to compressed_size at offset 18.
-        file.seekg(14, std::ios::cur);
-        uint32_t compressed_size;
-        file.read(reinterpret_cast<char*>(&compressed_size), 4);
-        // Return to data start
-        file.seekg(current_pos);
+        uint64_t compressed_size = csize32;
+        // ZIP64: a 0xFFFFFFFF size field is a sentinel; the real 64-bit sizes live
+        // in the zip64 extended-information extra field (header id 0x0001). numpy
+        // writes arrays with force_zip64=True, so this path is common. The extra
+        // record stores uncompressed then compressed size, but only for the fields
+        // that were sentinels in the fixed header.
+        if (csize32 == 0xFFFFFFFFu || usize32 == 0xFFFFFFFFu) {
+            size_t p = 0;
+            bool found = false;
+            while (p + 4 <= extra.size()) {
+                uint16_t id, len;
+                std::memcpy(&id,  extra.data() + p,     2);
+                std::memcpy(&len, extra.data() + p + 2, 2);
+                if (id == 0x0001) {
+                    size_t q = p + 4, end = std::min(extra.size(), p + 4 + (size_t)len);
+                    if (usize32 == 0xFFFFFFFFu) q += 8; // skip uncompressed size
+                    if (csize32 == 0xFFFFFFFFu && q + 8 <= end) {
+                        std::memcpy(&compressed_size, extra.data() + q, 8);
+                        found = true;
+                    }
+                    break;
+                }
+                p += 4 + len;
+            }
+            if (!found)
+                throw std::runtime_error("npz_reader: '" + fname +
+                    "' has a zip64 size sentinel but no zip64 extra field");
+        }
+
+        if ((flag & 0x08) && compressed_size == 0)
+            throw std::runtime_error("npz_reader: '" + fname +
+                "' uses a streaming data descriptor with no size; unsupported");
 
         // Read the data (stored uncompressed for .npy in npz)
         std::vector<char> buf(compressed_size);
-        file.read(buf.data(), compressed_size);
+        if (compressed_size) file.read(buf.data(), (std::streamsize)compressed_size);
 
         // Strip .npy extension from filename
         std::string array_name = fname;
