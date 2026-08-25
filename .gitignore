@@ -76,3 +76,5 @@ __pycache__/
 *.pyd
 *.egg-info/
 .venv/
+# Curated sample inputs under data/ are tracked despite the format rules above
+!/data/meshes/Track.stl
