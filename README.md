@@ -3,6 +3,9 @@
 Implementation of [**Subgrid Marching Tetrahedra**](https://hbaktash.github.io/projects/subgrid-marching-tetrahedra/index.html), 
 a method for extracting intersection-free isosurfaces using intersections with a tetrahedral grid's edges.
 
+![Subgrid Marching Tetrahedra teaser](images/teaser.png)
+
+
 The two primary executables are:
 
 | Executable | Description |

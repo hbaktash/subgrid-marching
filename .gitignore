@@ -78,3 +78,7 @@ __pycache__/
 .venv/
 # Curated sample inputs under data/ are tracked despite the format rules above
 !/data/meshes/Track.stl
+
+# Full-resolution teaser sources; only the downscaled images/teaser.png is tracked.
+/images/CellTeaser-compressed.png
+/images/CellTeaser-compressed.pdf
