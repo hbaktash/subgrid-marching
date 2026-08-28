@@ -102,8 +102,7 @@ single pure-Python file. Drop one file into your project and call
 ## Python bindings
 
 `pip install .` builds a `subgrid_marching` Python module (pybind11) exposing both the
-per-tet constructions and the full pipelines, with NumPy arrays in and out. It wraps
-the same core the CLIs use and reproduces their output exactly.
+per-tet constructions and the full pipelines.
 
 ```sh
 git clone --recursive git@github.com:hbaktash/subgrid-marching.git
