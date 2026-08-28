@@ -27,12 +27,31 @@ option(SUBGRID_POLYSCOPE_VIEWER "Build with the interactive Polyscope viewer" ON
 # CGAL code is compiled and the pipeline is unchanged.
 option(SUBGRID_WITH_CGAL "Build the exact CGAL (EPECK) mesh query handler (--cgal)" OFF)
 
+# Build the pybind11 Python module (`subgrid_marching`)? OFF by default, so a plain
+# C++ build never looks for Python or pybind11. `pip install .` turns it on; see
+# python/README.md.
+option(SUBGRID_BUILD_PYTHON "Build the pybind11 Python module" OFF)
+
+# The command-line tools and the test suite. Both ON by default; a Python-only
+# build (pip) turns them off so it does not build the CLIs or fetch Catch2.
+option(SUBGRID_BUILD_APPS "Build the command-line executables" ON)
+option(SUBGRID_BUILD_TESTS "Build the test suite" ON)
+
+# Everything linked into the Python extension must be position-independent, and the
+# core library and its dependencies are static. Set this before any dependency is
+# added so it applies to them too.
+if(SUBGRID_BUILD_PYTHON)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
+
 # Dependencies
 include(geometry-central)
 if(SUBGRID_POLYSCOPE_VIEWER)
     include(polyscope)
 endif()
-include(args)
+if(SUBGRID_BUILD_APPS)
+    include(args)  # CLI argument parsing; only the executables use it
+endif()
 # include(igl)
 include(fcpw)
 
@@ -107,7 +126,6 @@ if(SUBGRID_WITH_CGAL)
   message(STATUS "subgrid: CGAL ${CGAL_VERSION} (pinned ${SUBGRID_CGAL_VERSION}) -> exact --cgal query handler enabled.")
 endif()
 
-# ChatGPT'd the hell outta this part
 # Ensure Enoki's include dirs are also propagated (CPM may create 'enoki' or 'enoki::enoki').
 if (TARGET enoki::enoki OR TARGET enoki)
   if (TARGET enoki::enoki)
@@ -127,8 +145,10 @@ endif()
 
 add_library(normal_coordinates::normal_coordinates ALIAS normal_coordinates)
 
-enable_testing()
-add_subdirectory(tests)
+if(SUBGRID_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
 
 # NOTE: The dependency-free standalone port and its verification harnesses live
 # entirely under standalone/ and are NOT wired into this build. To run the
@@ -137,7 +157,7 @@ add_subdirectory(tests)
 
 
 # GUI-only debugging demos: only built with the Polyscope viewer.
-if(SUBGRID_POLYSCOPE_VIEWER)
+if(SUBGRID_BUILD_APPS AND SUBGRID_POLYSCOPE_VIEWER)
   # single/double tet tests
   add_executable(singleTetSubgrid apps/main_single_tet.cpp)
   target_link_libraries(singleTetSubgrid
@@ -158,21 +178,29 @@ if(SUBGRID_POLYSCOPE_VIEWER)
 endif()
 
 
-# Implicit tet mesh + mesh intersection query
-add_executable(subgrid apps/main_subgrid.cpp)
-target_link_libraries(subgrid
-  PRIVATE
-  normal_coordinates::normal_coordinates
-  taywee::args
-)
-set_property(TARGET subgrid PROPERTY CXX_STANDARD 17)
+if(SUBGRID_BUILD_APPS)
+  # Implicit tet mesh + mesh intersection query
+  add_executable(subgrid apps/main_subgrid.cpp)
+  target_link_libraries(subgrid
+    PRIVATE
+    normal_coordinates::normal_coordinates
+    taywee::args
+  )
+  set_property(TARGET subgrid PROPERTY CXX_STANDARD 17)
 
 
-# Implicit tet mesh + mesh intersection query
-add_executable(dualSubgrid apps/main_dual_subgrid.cpp)
-target_link_libraries(dualSubgrid
-  PRIVATE
-  normal_coordinates::normal_coordinates
-  taywee::args
-)
-set_property(TARGET dualSubgrid PROPERTY CXX_STANDARD 17)
+  # Implicit tet mesh + mesh intersection query
+  add_executable(dualSubgrid apps/main_dual_subgrid.cpp)
+  target_link_libraries(dualSubgrid
+    PRIVATE
+    normal_coordinates::normal_coordinates
+    taywee::args
+  )
+  set_property(TARGET dualSubgrid PROPERTY CXX_STANDARD 17)
+endif()
+
+
+# Python bindings; see python/CMakeLists.txt.
+if(SUBGRID_BUILD_PYTHON)
+  add_subdirectory(python)
+endif()

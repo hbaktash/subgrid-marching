@@ -1,0 +1,77 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "pybind11>=2.12"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "subgrid-marching"
+version = "0.1.0"
+description = "Intersection-free isosurface extraction with Subgrid Marching Tetrahedra"
+readme = "python/README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Hossein Baktash" },
+    { name = "Mark Gillespie" },
+    { name = "Keenan Crane" },
+]
+keywords = [
+    "isosurface",
+    "marching tetrahedra",
+    "normal surfaces",
+    "geometry processing",
+    "mesh extraction",
+    "dual contouring",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Graphics :: 3D Modeling",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = ["numpy>=1.20"]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[project.urls]
+Homepage = "https://hbaktash.github.io/projects/subgrid-marching-tetrahedra/index.html"
+Repository = "https://github.com/hbaktash/subgrid-marching"
+Paper = "https://doi.org/10.1145/3811358"
+
+[tool.scikit-build]
+minimum-version = "0.10"
+build-dir = "build/skbuild/{wheel_tag}"
+
+# The pure-Python half of the package; the compiled _core lands beside it via the
+# install() rule in python/CMakeLists.txt.
+wheel.packages = ["python/subgrid_marching"]
+
+# Building the Python module means building the core C++ library, so skip the
+# things a Python user has no use for: the viewer, the CLIs, and the C++ tests.
+[tool.scikit-build.cmake.define]
+SUBGRID_BUILD_PYTHON = "ON"
+SUBGRID_POLYSCOPE_VIEWER = "OFF"
+SUBGRID_BUILD_APPS = "OFF"
+SUBGRID_BUILD_TESTS = "OFF"
+
+[tool.scikit-build.cmake]
+build-type = "Release"
+
+# The build needs the geometry-central and sdf-dataset submodules, which a plain
+# sdist cannot carry; install from a recursive clone (see python/README.md).
+[tool.scikit-build.sdist]
+exclude = [
+    "build",
+    "out",
+    "images",
+    "reproduce",
+    "data/meshes",
+    "data/npz",
+    "deps",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["python/tests"]

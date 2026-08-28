@@ -99,6 +99,41 @@ to build this project at all, use the copy-pasteable ports in
 single pure-Python file. Drop one file into your project and call
 `subgrid_primal` / `subgrid_dual`. See [`standalone/README.md`](standalone/README.md).
 
+## Python bindings
+
+`pip install .` builds a `subgrid_marching` Python module (pybind11) exposing both the
+per-tet constructions and the full pipelines, with NumPy arrays in and out. It wraps
+the same core the CLIs use and reproduces their output exactly.
+
+```sh
+git clone --recursive git@github.com:hbaktash/subgrid-marching.git
+cd subgrid-marching
+pip install .
+```
+
+```python
+import subgrid_marching as smt
+
+# the whole pipeline — equivalent to `subgrid -i spot.obj -r 64 -o out.obj`
+result = smt.primal_from_mesh_file("data/meshes/spot.obj", resolution=64)
+result.vertices       # (N, 3) float64
+result.faces          # list of index arrays (faces are n-gons)
+result.non_even_tets  # 0 on a watertight input
+
+# or drive the per-tet construction yourself, from your own tet mesh + edge hits
+patch = smt.subgrid_primal(tet_positions, tet_global_indices, edge_isect_ts)
+```
+
+The bindings are **off by default** in the CMake build, so a C++-only build is
+unchanged; `-DSUBGRID_BUILD_PYTHON=ON` turns them on (and `-DSUBGRID_BUILD_APPS=OFF` /
+`-DSUBGRID_BUILD_TESTS=OFF` skip the CLIs and the C++ tests, which is what
+`pip install .` does).
+
+See [`python/README.md`](python/README.md) for the API reference and
+[`python/examples/`](python/examples/) for the per-tet call, cross-tet signature
+merging, and a full extract-and-save script. If you want the algorithm with *no*
+dependencies at all, use the pure-Python port in [`standalone/`](standalone/) instead.
+
 ## Usage
 
 Both `subgrid` and `dualSubgrid` take a single input, supplied in one of three

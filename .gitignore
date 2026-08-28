@@ -76,6 +76,12 @@ __pycache__/
 *.pyd
 *.egg-info/
 .venv/
+# python packaging / test artifacts (the built extension is covered by *.so above)
+dist/
+wheelhouse/
+*.whl
+.pytest_cache/
+.mypy_cache/
 # Curated sample inputs under data/ are tracked despite the format rules above
 !/data/meshes/Track.stl
 
