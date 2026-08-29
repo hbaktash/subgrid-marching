@@ -52,8 +52,9 @@ jobs:
       # environment (manylinux containers on Linux), repairs each wheel so it is
       # self-contained, and runs python/tests against it before keeping it.
       # Build selection and test command live in [tool.cibuildwheel] in pyproject.toml.
+      # cibuildwheel publishes v4.2 / v4.2.0 style tags, but no bare "v4".
       - name: Build wheels
-        uses: pypa/cibuildwheel@v4
+        uses: pypa/cibuildwheel@v4.2.0
         env:
           CIBW_ARCHS: ${{ matrix.archs }}
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.deployment_target }}
