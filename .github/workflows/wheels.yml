@@ -1,0 +1,103 @@
+name: Wheels
+
+# Binary wheels for PyPI. Building the Python module means building the whole C++
+# core, so this is deliberately not part of the per-PR CI: it runs on demand, and
+# automatically when a GitHub Release is published.
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Where to upload the wheels"
+        type: choice
+        options: [none, testpypi, pypi]
+        default: none
+  release:
+    types: [published]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_wheels:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-latest
+            archs: x86_64
+          - name: macos-arm64
+            os: macos-15
+            archs: arm64
+            # Apple Silicon starts at 11.0 anyway.
+            deployment_target: "11.0"
+          - name: macos-x86_64
+            # Intel images moved to the -intel labels; macos-13 has been retired.
+            os: macos-15-intel
+            archs: x86_64
+            # The core uses std::filesystem (src/common/file_IO.cpp), which libc++
+            # only ships from 10.15. Anything lower fails to compile.
+            deployment_target: "10.15"
+
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # cibuildwheel builds one wheel per Python version inside the right
+      # environment (manylinux containers on Linux), repairs each wheel so it is
+      # self-contained, and runs python/tests against it before keeping it.
+      # Build selection and test command live in [tool.cibuildwheel] in pyproject.toml.
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v4
+        env:
+          CIBW_ARCHS: ${{ matrix.archs }}
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.deployment_target }}
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.name }}
+          path: wheelhouse/*.whl
+          if-no-files-found: error
+
+  # No sdist is published: the build needs the geometry-central and sdf-dataset
+  # submodules, which a source tarball cannot carry at a sane size (deps/ is 117 MB).
+  # Building from source means cloning the repo recursively; see python/README.md.
+
+  publish:
+    name: publish to ${{ github.event_name == 'release' && 'pypi' || inputs.publish }}
+    needs: build_wheels
+    if: github.event_name == 'release' || inputs.publish != 'none'
+    runs-on: ubuntu-latest
+
+    # Trusted Publishing (OIDC): no API token is stored in this repository. The
+    # environment name must match the publisher configured on PyPI / TestPyPI.
+    environment: ${{ github.event_name == 'release' && 'pypi' || inputs.publish }}
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download all wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist
+
+      - name: List what will be uploaded
+        run: ls -lh dist
+
+      - name: Publish to TestPyPI
+        if: github.event_name == 'workflow_dispatch' && inputs.publish == 'testpypi'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+      - name: Publish to PyPI
+        if: github.event_name == 'release' || inputs.publish == 'pypi'
+        uses: pypa/gh-action-pypi-publish@release/v1

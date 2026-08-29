@@ -7,7 +7,7 @@ name = "subgrid-marching"
 version = "0.1.0"
 description = "Intersection-free isosurface extraction with Subgrid Marching Tetrahedra"
 readme = "python/README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = { file = "LICENSE" }
 authors = [
     { name = "Hossein Baktash" },
@@ -28,6 +28,12 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: C++",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Multimedia :: Graphics :: 3D Modeling",
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
@@ -60,8 +66,11 @@ SUBGRID_BUILD_TESTS = "OFF"
 [tool.scikit-build.cmake]
 build-type = "Release"
 
-# The build needs the geometry-central and sdf-dataset submodules, which a plain
-# sdist cannot carry; install from a recursive clone (see python/README.md).
+# No sdist is published to PyPI: the build needs the geometry-central and
+# sdf-dataset submodules, and deps/ is 117 MB, well past what belongs in (or fits
+# in) a source tarball. Building from source means a recursive clone; see
+# python/README.md. This exclude list only keeps a locally built sdist from
+# swallowing the whole checkout.
 [tool.scikit-build.sdist]
 exclude = [
     "build",
@@ -72,6 +81,32 @@ exclude = [
     "data/npz",
     "deps",
 ]
+
+# ---------------------------------------------------------------------------
+# Binary wheels (.github/workflows/wheels.yml). One wheel per Python version per
+# platform; each is tested against python/tests before it is kept.
+# ---------------------------------------------------------------------------
+[tool.cibuildwheel]
+build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*", "cp314-*"]
+# PyPy has no pybind11 story worth supporting here, musl and 32-bit are not worth
+# the build minutes for a research library.
+skip = ["pp*", "*-musllinux_*", "*_i686", "*-win32"]
+build-verbosity = 1
+
+# Every wheel is installed into a fresh environment and put through the binding
+# tests — parity against standalone/, the pipelines, and the sample meshes — so a
+# broken wheel never reaches PyPI.
+test-extras = ["test"]
+test-command = "pytest {project}/python/tests -q"
+
+[tool.cibuildwheel.linux]
+# Persists across the five Python builds in one container, so the CPM downloads
+# (fcpw, enoki) happen once instead of five times. Outside /project on purpose:
+# the container runs as root and would leave root-owned files in the checkout.
+environment = { CPM_SOURCE_CACHE = "/tmp/cpm-cache" }
+
+[tool.cibuildwheel.macos]
+environment = { CPM_SOURCE_CACHE = "$HOME/.cache/cpm" }
 
 [tool.pytest.ini_options]
 testpaths = ["python/tests"]
