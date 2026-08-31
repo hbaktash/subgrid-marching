@@ -162,9 +162,12 @@ Full specification: [construction policy](https://github.com/hbaktash/subgrid-ma
   keep running.
 - **Progress output.** `progress=True` writes to the process stdout from C++, so it
   shows up in a terminal but not in a notebook cell.
-- **Exact queries.** `cgal=True` needs the optional
-  [CGAL build](https://github.com/hbaktash/subgrid-marching#robust-queries-cgal)
-  (`pip install .` with `CMAKE_ARGS="-DSUBGRID_WITH_CGAL=ON"`).
+- **Exact queries.** `cgal=True` needs the optional CGAL build, which the published
+  wheels do **not** include — compile from a clone with
+  `CMAKE_ARGS="-DSUBGRID_WITH_CGAL=ON" pip install .` (Boost, GMP and MPFR must be
+  installed first; see
+  [Robust queries (CGAL)](https://github.com/hbaktash/subgrid-marching#robust-queries-cgal)).
+  Without it, `cgal=True` raises `RuntimeError`.
 
 ## Examples
 

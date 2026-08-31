@@ -22,38 +22,26 @@ result to exactly the `-o` path you give. Run these from the repo root after
 [building](#building):
 
 ```sh
-# 1. Triangle mesh (OBJ / PLY / OFF), extracted on a 64³ grid
+# 1. Triangle mesh, remeshed on a 64³ grid
 ./build/subgrid -i ./data/meshes/spot.obj -r 64 -o ./out/spot.obj
 
-# 2. Built-in signed distance function (see deps/sdf-dataset)
+# 2. Contouring an analytical SDF (see deps/sdf-dataset)
 ./build/subgrid -s Sphere -r 64 -o ./out/sphere.obj
 
-# 3. Precomputed edge intersections (.npz): explicit tet mesh + hits, no grid
+# 3. Precomputed edge intersections (.npz): explicit tet mesh + its edge intersections
 ./build/subgrid --npz ./data/npz/wine_glass_N64_explicit.npz -o ./out/explicit.obj
 ```
 
-A few small sample inputs ship in `data/` — `cube`, `spot`, and `wine_glass`,
-each as both a mesh (`meshes/*.obj`) and a precomputed `.npz` (`npz/*_N64_explicit.npz`).
+A few sample inputs are in `data/`; mesh (`meshes/*.obj`) and `.npz` (precomputed edge intersection) examples.
 
 Swap `subgrid` → `dualSubgrid` for the dual (QEF) mesh from any of these inputs. 
 See [Usage](#usage) for the full flag reference and [explicit input format](docs/explicit_input_format.md) for the
 `.npz` layout.
 
 
-## Dependencies
+## Building
 
-All dependencies are either fetched automatically by CMake (via CPM) 
-or exist as submodules (`geometry-central`, `sdf-dataset`):
-
-- [geometry-central](https://github.com/nmwsharp/geometry-central) — mesh data structures (submodule)
-- [sdf-dataset](https://github.com/GeometryCollective/sdf-dataset) — built-in signed distance functions (submodule)
-- [polyscope](https://github.com/nmwsharp/polyscope) — visualization (fetched by CMake; **optional**, see below)
-- [fcpw](https://github.com/rohan-sawhney/fcpw) — BVH ray queries (fetched by CMake)
-- [CGAL](https://www.cgal.org) — exact (EPECK) mesh intersection queries (**optional**, only with `-DSUBGRID_WITH_CGAL=ON`; the CGAL release is fetched + pinned by CMake, but its Boost/GMP/MPFR must be installed)
-- [Eigen](https://eigen.tuxfamily.org) — linear algebra (via geometry-central)
-- C++17 compiler
-
-## Cloning
+### Cloning
 
 ```sh
 git clone --recursive git@github.com:hbaktash/subgrid-marching.git
@@ -61,77 +49,48 @@ cd subgrid-marching
 git submodule update --init --recursive
 ```
 
-## Building
+All dependencies are either fetched automatically by CMake (via CPM) or exist as submodules.
+
+### C++
+
+The core functionalities are in C++.
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ```
 
-All executables land in `build/`. The interactive Polyscope viewer is built by
-default (`-DSUBGRID_POLYSCOPE_VIEWER=ON`).
+All executables land in `build/`. Add `-DSUBGRID_POLYSCOPE_VIEWER=OFF` for a
+headless build: it drops the Polyscope / OpenGL / GLFW dependency and builds only
+`subgrid`, `dualSubgrid`, and the tests (the interactive demos need the viewer).
+`-DSUBGRID_WITH_CGAL=ON` adds the optional exact-arithmetic query handler; see
+[Robust queries (CGAL)](#robust-queries-cgal) for the system packages it needs.
 
-### Headless build (no Polyscope)
-
-The `subgrid` and `dualSubgrid` CLIs write their output meshes without ever
-opening a window. If you only need the CLI — e.g. on a server — build without the
-viewer to drop the Polyscope / OpenGL / GLFW dependency entirely:
+### Python
 
 ```sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSUBGRID_POLYSCOPE_VIEWER=OFF
-cmake --build build -j
+pip install . 
 ```
 
-This builds only `subgrid`, `dualSubgrid`, and the tests. The interactive demos
-(`singleTetSubgrid`, `ringTetSubgrid`) and the on-screen viewer require the
-default `-DSUBGRID_POLYSCOPE_VIEWER=ON`.
+```python
+import subgrid_marching as smt
 
-There is also an optional exact-arithmetic build (`-DSUBGRID_WITH_CGAL=ON`, off
-by default) for more robust mesh intersections; see
-[Robust queries (CGAL)](#robust-queries-cgal) for details and the system
-packages it needs.
+result = smt.primal_from_mesh_file("data/meshes/spot.obj", resolution=64)
+result.vertices       # (N, 3) float64
+result.faces          # list of index arrays (faces are n-gons)
+result.non_even_tets  # 0 on a watertight input
+```
+
+Per-tet constructions and the full pipelines are exposed in Python via python bindings. see
+[`python/README.md`](python/README.md) for the API and
+[`python/examples/`](python/examples/) for  examples.
 
 ### Just want the algorithm? (no build, no dependencies)
 
 If you only need the **per-tet** primal/dual local constructions and don't want
 to build this project at all, use the copy-pasteable ports in
 [`standalone/`](standalone/): a single header-only C++ file (STL only) or a
-single pure-Python file. Drop one file into your project and call
-`subgrid_primal` / `subgrid_dual`. See [`standalone/README.md`](standalone/README.md).
-
-## Python bindings
-
-`pip install .` builds a `subgrid_marching` Python module (pybind11) exposing both the
-per-tet constructions and the full pipelines.
-
-```sh
-git clone --recursive git@github.com:hbaktash/subgrid-marching.git
-cd subgrid-marching
-pip install .
-```
-
-```python
-import subgrid_marching as smt
-
-# the whole pipeline — equivalent to `subgrid -i spot.obj -r 64 -o out.obj`
-result = smt.primal_from_mesh_file("data/meshes/spot.obj", resolution=64)
-result.vertices       # (N, 3) float64
-result.faces          # list of index arrays (faces are n-gons)
-result.non_even_tets  # 0 on a watertight input
-
-# or drive the per-tet construction yourself, from your own tet mesh + edge hits
-patch = smt.subgrid_primal(tet_positions, tet_global_indices, edge_isect_ts)
-```
-
-The bindings are **off by default** in the CMake build, so a C++-only build is
-unchanged; `-DSUBGRID_BUILD_PYTHON=ON` turns them on (and `-DSUBGRID_BUILD_APPS=OFF` /
-`-DSUBGRID_BUILD_TESTS=OFF` skip the CLIs and the C++ tests, which is what
-`pip install .` does).
-
-See [`python/README.md`](python/README.md) for the API reference and
-[`python/examples/`](python/examples/) for the per-tet call, cross-tet signature
-merging, and a full extract-and-save script. If you want the algorithm with *no*
-dependencies at all, use the pure-Python port in [`standalone/`](standalone/) instead.
+single pure-Python file. See [`standalone/README.md`](standalone/README.md).
 
 ## Usage
 
@@ -142,15 +101,10 @@ forms (pick exactly one):
 - a named built-in SDF (`-s`) — run either executable with `--listSDFs` to print the available names, or
 - a precomputed `.npz` of edge intersections (`--npz`).
 
-With `-i` or `-s` the tet mesh is generated internally at resolution `-r`. With
-`--npz` the tet mesh and its edge–surface intersections come entirely from the
-file, so `-r` does not apply. The archive holds a tet mesh plus per-edge
-intersections in CSR layout — arrays `vertices`, `tets`, `edges`,
-`isect_offsets`, `isect_ts`, and (optionally, used by the dual) `isect_normals`.
-See [explicit input format](docs/explicit_input_format.md) for the full spec and
+See [explicit input format](docs/explicit_input_format.md) for the full spec of the `.npz` format and
 [`data/npz/`](data/npz/) for examples.
 
-For what each pipeline accepts and produces per tet, see the
+For more details about each pipeline see the
 [construction policy](docs/construction_policy.md).
 
 ### subgrid — primal extraction
@@ -221,6 +175,8 @@ Opens a Polyscope GUI for building and visualizing normal surfaces inside a
 single tetrahedron. Sliders control normal coordinates (corner and diagonal
 cuts) and edge intersection counts directly.
 
+More complex configurations can be visualized with `ringTetSubgrid`, which shows four tets sharing an edge.
+
 ## Input preprocessing
 
 When a mesh file is provided, the input is automatically:
@@ -263,8 +219,6 @@ drives the non-even count to zero, at roughly ~5× the intersection-query cost o
 the default FCPW handler. It is off by default; without `--cgal` the pipeline is
 unchanged.
 
-Build it with `-DSUBGRID_WITH_CGAL=ON`, then pass `--cgal` at runtime:
-
 The CGAL release itself is fetched and version-pinned by CMake (see
 [`cmake/cgal.cmake`](cmake/cgal.cmake)), so it does not depend on any
 system-installed CGAL. Its exact kernels do require **Boost (≥ 1.72), GMP
@@ -275,6 +229,28 @@ brew install boost gmp mpfr                            # macOS
 sudo apt install libboost-dev libgmp-dev libmpfr-dev   # Debian/Ubuntu
 ```
 
+Then build with `-DSUBGRID_WITH_CGAL=ON` and pass `--cgal` at runtime:
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSUBGRID_WITH_CGAL=ON
+cmake --build build -j
+./build/subgrid -i ./data/meshes/spot.obj -r 64 --cgal -o ./out/spot.obj
+```
+
+**From Python**, it is the same build option passed through pip. The published
+wheels are built without CGAL, so this requires compiling from a clone:
+
+```sh
+CMAKE_ARGS="-DSUBGRID_WITH_CGAL=ON" pip install .
+```
+
+```python
+smt.primal_from_mesh_file("data/meshes/spot.obj", 64, cgal=True)
+```
+
+`cgal=True` applies to mesh input only (`primal_from_mesh`, `primal_from_mesh_file`,
+and the `dual_` equivalents); without the CGAL build it raises.
+
 ## A note on self-intersections
 
 The output produced by this method—regardless of whether it is closed or orientable—is mathematically guaranteed to be free of self-intersections (see Appendix D in the [paper](https://hbaktash.github.io/projects/subgrid-marching-tetrahedra/index.html)). The per-tet self-intersection tests in `tests/test_self_intersection.cpp` confirm this empirically across thousands of configurations of edge-intersection counts and locations.
@@ -282,7 +258,7 @@ If a numerical self-intersection test ever flags the output, it is likely detect
 
 ## Citation
 
-If you use this code in your research, please cite:
+If you use this code in your projects, please cite:
 
 ```bibtex
 @article{Baktash:2026:SMT,
