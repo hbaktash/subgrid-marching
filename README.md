@@ -214,9 +214,7 @@ See below (Robust queries) for a non-quick way.
 
 For mesh input (`-i`), an exact edge–surface intersection query handler using
 [**CGAL's EPECK**](https://doc.cgal.org/latest/Kernel_23/index.html) exact
-predicates is available as an optional build. On almost every tested example this
-drives the non-even count to zero, at roughly ~5× the intersection-query cost of
-the default FCPW handler. It is off by default; without `--cgal` the pipeline is
+predicates is available as an optional build. On almost every tested watertight example this drives the non-even count to zero, costing roughly an order of magnitude more intersection-query time than the default FCPW handler. This option is off by default; without `--cgal` the pipeline is
 unchanged.
 
 The CGAL release itself is fetched and version-pinned by CMake (see
