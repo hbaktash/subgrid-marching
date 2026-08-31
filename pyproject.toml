@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "subgrid-marching"
-version = "0.1.0"
+version = "1.0.0"
 description = "Intersection-free isosurface extraction with Subgrid Marching Tetrahedra"
 readme = "python/README.md"
 requires-python = ">=3.9"
