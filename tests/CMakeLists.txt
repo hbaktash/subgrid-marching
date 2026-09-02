@@ -6,6 +6,8 @@ include(Catch)
 
 add_executable(tests
     test_nc_solver.cpp
+    test_grid_edges.cpp
+    test_pipeline_parity.cpp
     test_subgrid_pipeline.cpp
     test_boundary_curves.cpp
     test_comb_merge.cpp

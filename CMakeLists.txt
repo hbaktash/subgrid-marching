@@ -76,6 +76,7 @@ set(SRC_FILES
     src/query/fcpw_robust_queries.cpp
     src/query/intersection_query.cpp
     src/query/mod2_reduction.cpp
+    src/query/edge_isect_cache.cpp
     src/subgrid_MT/dual/qef_solver.cpp
     src/subgrid_MT/dual/dual_construction.cpp
     src/query/input_query_handler.cpp
@@ -120,6 +121,13 @@ if(SUBGRID_WITH_CGAL)
   include(cgal)
   target_link_libraries(normal_coordinates PRIVATE CGAL::CGAL)
   target_compile_definitions(normal_coordinates PUBLIC HAVE_CGAL=1)
+  # EPECK's lazy kernel reference-counts its handles, and those counters are only
+  # atomic when CGAL_HAS_THREADS is set. CGAL's config.h derives it from
+  # BOOST_HAS_THREADS / _OPENMP, neither of which is defined here -- the tet loop
+  # is parallelized with std::thread -- so it must be set explicitly or the
+  # handler races silently under -j. PRIVATE is enough: the pImpl in
+  # query/cgal_queries.h keeps CGAL headers inside cgal_queries.cpp.
+  target_compile_definitions(normal_coordinates PRIVATE CGAL_HAS_THREADS)
   # Correct interval arithmetic in CGAL's exact filters (GCC/Clang only).
   target_compile_options(normal_coordinates PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-frounding-math>)

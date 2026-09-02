@@ -2,6 +2,7 @@
 
 #include "subgrid_MT/cv_interpolation.h"
 #include "query/input_query_handler.h"
+#include "query/edge_isect_cache.h"   // QueryCache
 #include <cstddef>
 #include <string>
 
@@ -15,6 +16,17 @@ struct SubgridPipelineOpts {
     bool verbose = false;
     double scoop_bulge = 0.001;       // Steiner mid-scoop-vertex bulge magnitude
     bool scoop_mid_vertices = true;    // simplicial-embedding Steiner insertion
+    QueryCache query_cache = QueryCache::NONE;  // edge intersection reuse
+    // Query every edge in the canonical min->max direction and flip for tets that
+    // traverse it the other way, so tets sharing an edge always agree on where --
+    // and how many times -- the surface crosses it. Costs no extra queries, and a
+    // query cache is always canonical, so this is what makes cached and uncached
+    // runs agree bit for bit. See InputQueryHandler::canonical_edge_queries.
+    bool canonical_queries = true;
+    // Worker threads for the tet loop; 1 keeps the original serial path, 0 uses
+    // every core. Steps 1-3 run across threads, the merge stays sequential and
+    // in tet order, so the result does not depend on the thread count.
+    int num_threads = 1;
 };
 
 struct SubgridPipelineResult {
@@ -23,6 +35,11 @@ struct SubgridPipelineResult {
     int non_normal_tets = 0;
     int non_even_tets = 0;  // tets that had open curves (odd face-sum somewhere)
     size_t total_tets = 0;
+    // Serial runs (num_threads == 1) split these as the names say. With threads
+    // the query and construction phases overlap, so summing per-thread times
+    // would exceed elapsed: isect_time then holds the wall-clock time of the
+    // parallel query+construction phases and construction_time the sequential
+    // merge. Together they still add up to the tet loop's elapsed time.
     double isect_time = 0.0;
     double construction_time = 0.0;
 };
