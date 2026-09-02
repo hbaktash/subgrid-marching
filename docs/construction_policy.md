@@ -97,6 +97,16 @@ additionally records:
   boundary-polygon centroid — the same point the QEF uses as its regularization
   target.
 
+### Query reuse and threading
+
+Reconstruction is per-tetrahedron, but the *inputs* are not: each grid edge is
+shared by 4 (axis) or 6 (face-diagonal) tets, so the plain loop queries every
+edge about five times, and steps 1-3 above are independent per tet. Three opt-in
+options exploit that — `--queryCache slab`, `-j/--threads`, and `--canonicalQueries` —
+without touching the per-tet constructions. Threading is bit-exact at any thread
+count; the cache shifts the result very slightly unless `--canonicalQueries` is
+on. See [performance.md](performance.md) for the mechanics and measurements.
+
 ## Entry points
 
 Library ([subgrid_pipeline.h](../include/subgrid_pipeline.h),

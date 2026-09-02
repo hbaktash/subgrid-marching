@@ -138,6 +138,27 @@ Remaining options (`--mod2`, `--noViz`, `--noPBar`, `--inputSaveDir`) are listed
 by `./build/subgrid -h`. The output mesh is written to exactly the `-o` path; the
 Polyscope window opens after extraction unless `--noViz` is given.
 
+### Going faster
+
+Extraction is single-threaded and uncached by default. Two flags change that,
+and both are safe to combine:
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-j, --threads` | 1 | Worker threads for the tet loop; `0` uses every core |
+| `--queryCache` | `none` | `slab` reuses edge intersections across the tets sharing an edge (grid input only) |
+
+```sh
+./build/subgrid -i ./data/meshes/spot.obj -r 128 -j 0 --queryCache slab -o ./out/spot.obj
+```
+
+That is 7.2s → 2.5s on a 10-core laptop, and 15.9s → 1.4s for `-s Cables -r 64`.
+Threading does not change the result: output is bit-identical at any thread
+count, and the cache matches the uncached path exactly.
+
+See [performance](docs/performance.md) for what the options actually do, when
+each one pays, and the measurements behind those numbers.
+
 ### dualSubgrid — dual extraction
 
 ```
