@@ -73,44 +73,34 @@ void PrecomputedQueryHandler::query_intersections(
     bool /*recordNormals*/
 ){
     for (int e = 0; e < 6; ++e) {
-        size_t local_i = ALL_TET_PAIRS[e].first;
-        size_t local_j = ALL_TET_PAIRS[e].second;
-        size_t global_i = tet_indices[local_i];
-        size_t global_j = tet_indices[local_j];
-
-        // Canonicalize: lookup key is (min, max)
-        bool reversed = (global_i > global_j);
-        size_t key_lo = reversed ? global_j : global_i;
-        size_t key_hi = reversed ? global_i : global_j;
-
-        auto it = edge_map.find({key_lo, key_hi});
-        if (it == edge_map.end()) {
-            edge_isect_ts[e].clear();
-            edge_isect_normals[e].clear();
-            continue;
-        }
-
-        const EdgeData& data = it->second;
-
-        if (!reversed) {
-            edge_isect_ts[e] = data.ts;
-            edge_isect_normals[e] = data.normals;
-        } else {
-            // Reverse order and flip t-values: t -> 1-t
-            size_t n = data.ts.size();
-            edge_isect_ts[e].resize(n);
-            for (size_t k = 0; k < n; ++k)
-                edge_isect_ts[e][k] = 1.0 - data.ts[n - 1 - k];
-
-            if (has_normals) {
-                edge_isect_normals[e].resize(n);
-                for (size_t k = 0; k < n; ++k)
-                    edge_isect_normals[e][k] = data.normals[n - 1 - k];
-            } else {
-                edge_isect_normals[e].clear();
-            }
-        }
+        size_t global_i = tet_indices[ALL_TET_PAIRS[e].first];
+        size_t global_j = tet_indices[ALL_TET_PAIRS[e].second];
+        query_edge(global_i, global_j, Vector3{}, Vector3{},
+                   edge_isect_ts[e], edge_isect_normals[e],
+                   /*useRobust=*/false, /*recordNormals=*/true);
     }
+}
+
+
+void PrecomputedQueryHandler::query_edge(
+    size_t global_i, size_t global_j,
+    const Vector3& /*pi*/, const Vector3& /*pj*/,
+    std::vector<double>& out_ts,
+    std::vector<Vector3>& out_normals,
+    bool /*useRobust*/, bool recordNormals
+){
+    // Canonicalize: lookup key is (min, max)
+    const bool reversed = (global_i > global_j);
+    const size_t key_lo = reversed ? global_j : global_i;
+    const size_t key_hi = reversed ? global_i : global_j;
+
+    auto it = edge_map.find({key_lo, key_hi});
+    if (it == edge_map.end()) {
+        out_ts.clear();
+        out_normals.clear();
+        return;
+    }
+    emit_edge_isect(it->second, reversed, out_ts, out_normals, recordNormals);
 }
 
 

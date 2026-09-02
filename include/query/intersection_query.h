@@ -78,6 +78,21 @@ find_single_tet_edge_intersections_fcpw(
     bool recordNormals = true
 );
 
+// One segment a->b: crossings as t in [0, 1] measured from a, with matching
+// normals when recordNormals. Outputs are cleared first. This is the unit
+// `find_single_tet_edge_intersections_fcpw` runs over each of the six tet edges,
+// and the per-edge entry point the query cache uses.
+void
+find_single_edge_intersections_fcpw(
+    const geometrycentral::Vector3& a,
+    const geometrycentral::Vector3& b,
+    fcpw::Scene<3>& accel,
+    std::vector<double>& out_isect_ts,
+    std::vector<geometrycentral::Vector3>& out_isect_normals,
+    bool useRobust = false,
+    bool recordNormals = true
+);
+
 
 
 // -------------------------------- CP queries; with FCPW --------------------------------

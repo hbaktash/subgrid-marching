@@ -140,6 +140,49 @@ get_fcpw_accel(
 }
 
 void
+find_single_edge_intersections_fcpw(
+    const geometrycentral::Vector3& a,
+    const geometrycentral::Vector3& b,
+    fcpw::Scene<3>& accel,
+    std::vector<double>& out_isect_ts,
+    std::vector<geometrycentral::Vector3>& out_isect_normals,
+    bool useRobust,
+    bool recordNormals
+){
+    out_isect_ts.clear();
+    out_isect_normals.clear();
+
+    fcpw::Vector3 origin;
+    origin << a.x, a.y, a.z;
+    fcpw::Vector3 dir;
+    dir << b.x - a.x, b.y - a.y, b.z - a.z;
+    double seg_len = std::sqrt(dir[0]*dir[0] + dir[1]*dir[1] + dir[2]*dir[2]);
+    // if (seg_len <= 1e-8) return;
+    for (int k=0;k<3;++k) dir[k] /= seg_len;
+    // intersect using FCPW
+    fcpw::Ray<3> ray(origin, dir, seg_len + (useRobust ? 0. : 1e-6)); // max length 1.0
+    std::vector<fcpw::Interaction<3>> isects;
+    if (useRobust) {
+        isects = intersect_robust_all_hits(accel, ray, recordNormals, 1e-6, -1);
+    } else {
+        accel.intersect(ray, isects, false, true);
+    }
+
+    // convert intersections to t parameters along segment
+    for (size_t ii = 0; ii < isects.size(); ii++) {
+        const fcpw::Interaction<3>& interaction = isects[ii];
+        if (interaction.d < 0 || interaction.d > seg_len) {
+            continue;
+        }
+        double t_param = interaction.d / seg_len;
+        out_isect_ts.push_back(t_param);
+        if (recordNormals) {
+            out_isect_normals.push_back(geometrycentral::Vector3{interaction.n[0], interaction.n[1], interaction.n[2]});
+        }
+    }
+}
+
+void
 find_single_tet_edge_intersections_fcpw(
     const std::array<geometrycentral::Vector3,4>& tet_positions,
     fcpw::Scene<3>& accel,
@@ -151,36 +194,11 @@ find_single_tet_edge_intersections_fcpw(
     // intersect with all edges of vol_mesh
     for (size_t eIdx = 0; eIdx < 6; ++eIdx) {
         std::pair<int,int> edge = ALL_TET_PAIRS[eIdx];
-        Vector3 a = tet_positions[edge.first],
-                b = tet_positions[edge.second];
-        fcpw::Vector3 origin;
-        origin << a.x, a.y, a.z;
-        fcpw::Vector3 dir;
-        dir << b.x - a.x, b.y - a.y, b.z - a.z;
-        double seg_len = std::sqrt(dir[0]*dir[0] + dir[1]*dir[1] + dir[2]*dir[2]);
-        // if (seg_len <= 1e-8) continue;
-        for (int k=0;k<3;++k) dir[k] /= seg_len;
-        // intersect using FCPW
-        fcpw::Ray<3> ray(origin, dir, seg_len + (useRobust ? 0. : 1e-6)); // max length 1.0
-        std::vector<fcpw::Interaction<3>> isects;
-        if (useRobust) {
-            isects = intersect_robust_all_hits(accel, ray, recordNormals, 1e-6, -1);
-        } else {
-            accel.intersect(ray, isects, false, true);
-        }
-
-        // convert intersections to t parameters along segment
-        for (size_t ii = 0; ii < isects.size(); ii++) {
-            const fcpw::Interaction<3>& interaction = isects[ii];
-            if (interaction.d < 0 || interaction.d > seg_len) {
-                continue;
-            }
-            double t_param = interaction.d / seg_len;
-            out_edge_isect_ts[eIdx].push_back(t_param);
-            if (recordNormals) {
-                out_isect_normals[eIdx].push_back(geometrycentral::Vector3{interaction.n[0], interaction.n[1], interaction.n[2]});
-            }
-        }
+        find_single_edge_intersections_fcpw(
+            tet_positions[edge.first], tet_positions[edge.second], accel,
+            out_edge_isect_ts[eIdx], out_isect_normals[eIdx],
+            useRobust, recordNormals
+        );
     }
 }
 

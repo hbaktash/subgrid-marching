@@ -1,4 +1,5 @@
 #include "query/input_query_handler.h"
+#include "query/edge_isect_cache.h"
 #include "query/intersection_query.h"
 #include "query/sdf_queries.h"
 #include "common/utils.h"
@@ -13,6 +14,55 @@
 // ============================================================================
 
 
+
+void InputQueryHandler::query_intersections(
+    const std::array<size_t,4>& tet_indices,
+    const std::array<Vector3,4>& tet_positions,
+    std::array<std::vector<double>,6>& edge_isect_ts,
+    std::array<std::vector<Vector3>,6>& edge_isect_normals,
+    bool useRobust,
+    bool recordNormals
+){
+    if (!canonical_edge_queries || !supports_edge_query()) {
+        query_intersections(tet_positions, edge_isect_ts, edge_isect_normals, useRobust, recordNormals);
+        return;
+    }
+
+    EdgeIsect scratch;
+    for (int e = 0; e < 6; ++e) {
+        const int li = ALL_TET_PAIRS[e].first, lj = ALL_TET_PAIRS[e].second;
+        const size_t gi = tet_indices[li], gj = tet_indices[lj];
+        const bool reversed = gi > gj;
+
+        // Always ask in the min -> max direction, so every tet sharing this edge
+        // gets the identical answer.
+        const size_t lo = reversed ? gj : gi, hi = reversed ? gi : gj;
+        const Vector3& p_lo = reversed ? tet_positions[lj] : tet_positions[li];
+        const Vector3& p_hi = reversed ? tet_positions[li] : tet_positions[lj];
+
+        if (!reversed) {
+            query_edge(lo, hi, p_lo, p_hi, edge_isect_ts[e], edge_isect_normals[e],
+                       useRobust, recordNormals);
+        } else {
+            query_edge(lo, hi, p_lo, p_hi, scratch.ts, scratch.normals, useRobust, recordNormals);
+            emit_edge_isect(scratch, /*reversed=*/true, edge_isect_ts[e], edge_isect_normals[e],
+                            recordNormals);
+        }
+    }
+}
+
+
+void InputQueryHandler::query_edge(
+    size_t /*global_i*/, size_t /*global_j*/,
+    const Vector3& /*pi*/, const Vector3& /*pj*/,
+    std::vector<double>& /*out_ts*/,
+    std::vector<Vector3>& /*out_normals*/,
+    bool /*useRobust*/, bool /*recordNormals*/
+){
+    throw std::logic_error(
+        "this InputQueryHandler does not support single-edge queries; "
+        "check supports_edge_query() before using the edge cache.");
+}
 
 // query count logging utilities
 void InputQueryHandler::update_global_query_count_map(
@@ -78,9 +128,30 @@ void SDFQueryHandler::query_intersections(
         query_count_per_edge,
         min_step_size
     );
+    if (!collect_query_stats) return;
     total_queries += query_count_per_edge[0] + query_count_per_edge[1] + query_count_per_edge[2] + query_count_per_edge[3] + query_count_per_edge[4] + query_count_per_edge[5];
     // Update edge query counts for logging
     local_edge_query_counts = query_count_per_edge;
+}
+
+
+void SDFQueryHandler::query_edge(
+    size_t /*global_i*/, size_t /*global_j*/,
+    const Vector3& pi, const Vector3& pj,
+    std::vector<double>& out_ts,
+    std::vector<Vector3>& out_normals,
+    bool /*useRobust*/, bool /*recordNormals*/
+){
+    // Like query_intersections, the SDF march always produces normals.
+    std::vector<float> ts_f;
+    size_t query_count = 0;
+    edge_intersects_SDF(pi, pj, sdf_func, ts_f, out_normals, query_count, min_step_size);
+
+    out_ts.clear();
+    out_ts.reserve(ts_f.size());
+    for (float t : ts_f) out_ts.push_back(static_cast<double>(t));
+
+    if (collect_query_stats) total_queries += query_count;
 }
 
 
@@ -119,6 +190,18 @@ void MeshQueryHandler::query_intersections(
         tet_positions, accel,
         edge_isect_ts, edge_isect_normals,
         useRobust, recordNormals
+    );
+}
+
+void MeshQueryHandler::query_edge(
+    size_t /*global_i*/, size_t /*global_j*/,
+    const Vector3& pi, const Vector3& pj,
+    std::vector<double>& out_ts,
+    std::vector<Vector3>& out_normals,
+    bool useRobust, bool recordNormals
+){
+    find_single_edge_intersections_fcpw(
+        pi, pj, accel, out_ts, out_normals, useRobust, recordNormals
     );
 }
 

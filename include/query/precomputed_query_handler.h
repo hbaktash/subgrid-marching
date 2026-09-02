@@ -1,6 +1,7 @@
 #pragma once
 
 #include "query/input_query_handler.h"
+#include "query/edge_isect_cache.h"
 #include "common/npz_reader.h"
 #include <unordered_map>
 
@@ -11,10 +12,9 @@
 
 class PrecomputedQueryHandler : public InputQueryHandler {
 public:
-    struct EdgeData {
-        std::vector<double> ts;
-        std::vector<Vector3> normals;  // empty if normals not provided
-    };
+    // Same layout and canonical i < j convention as the query cache, so both
+    // share emit_edge_isect for the reverse-direction flip.
+    using EdgeData = EdgeIsect;
 
 private:
     struct PairHash {
@@ -54,6 +54,16 @@ public:
         const std::array<Vector3,4>& tet_positions,
         std::array<std::vector<double>,6>& edge_isect_ts,
         std::array<std::vector<Vector3>,6>& edge_isect_normals,
+        bool useRobust = false,
+        bool recordNormals = true
+    ) override;
+
+    bool supports_edge_query() const override { return true; }
+    void query_edge(
+        size_t global_i, size_t global_j,
+        const Vector3& pi, const Vector3& pj,
+        std::vector<double>& out_ts,
+        std::vector<Vector3>& out_normals,
         bool useRobust = false,
         bool recordNormals = true
     ) override;

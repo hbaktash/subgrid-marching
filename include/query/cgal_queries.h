@@ -31,6 +31,16 @@ public:
         bool recordNormals = true
     ) override;
 
+    bool supports_edge_query() const override { return true; }
+    void query_edge(
+        size_t global_i, size_t global_j,
+        const Vector3& pi, const Vector3& pj,
+        std::vector<double>& out_ts,
+        std::vector<Vector3>& out_normals,
+        bool useRobust = false,
+        bool recordNormals = true
+    ) override;
+
     void query_normal(const Vector3& q, Vector3& normal, bool verbose = false) override;
 
     bool is_sdf() const override { return false; }

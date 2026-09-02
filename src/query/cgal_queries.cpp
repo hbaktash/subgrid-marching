@@ -166,6 +166,16 @@ void CGALQueryHandler::query_intersections(
     }
 }
 
+void CGALQueryHandler::query_edge(
+    size_t /*global_i*/, size_t /*global_j*/,
+    const Vector3& pi, const Vector3& pj,
+    std::vector<double>& out_ts,
+    std::vector<Vector3>& out_normals,
+    bool /*useRobust*/, bool recordNormals
+) {
+    impl->edge_intersections(pi, pj, recordNormals, out_ts, out_normals);
+}
+
 void CGALQueryHandler::query_normal(const Vector3& q, Vector3& normal, bool /*verbose*/) {
     auto pp = impl->tree->closest_point_and_primitive(Point(q.x, q.y, q.z));
     size_t idx = static_cast<size_t>(std::distance(impl->triangles.begin(), pp.second));
