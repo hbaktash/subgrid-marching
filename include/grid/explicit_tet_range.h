@@ -54,4 +54,7 @@ public:
     iterator begin() const { return tets.begin(); }
     iterator end() const { return tets.end(); }
     size_t total_tet_count() const { return tets.size(); }
+
+    TetData tet_at(size_t flat_index) const { return tets[flat_index]; }
+
 };
