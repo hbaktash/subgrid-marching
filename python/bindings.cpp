@@ -524,9 +524,23 @@ std::vector<Vector3> mesh_positions(SurfaceMesh& mesh, VertexPositionGeometry& g
     return out;
 }
 
+// Edge intersection reuse (see query/edge_isect_cache.h). "slab" needs the
+// implicit grid and is ignored for explicit tet meshes, whose intersections are
+// already precomputed per edge.
+QueryCache parse_query_cache(const std::string& name) {
+    if (name == "none") return QueryCache::NONE;
+    if (name == "slab") return QueryCache::SLAB;
+    throw std::invalid_argument("query_cache must be 'none' or 'slab'; got '" + name + "'");
+}
+
 SubgridPipelineOpts make_primal_opts(bool mod2, bool greedy, bool robust, bool progress, bool verbose,
-                                     double scoop_bulge, bool scoop_mid_vertices) {
+                                     double scoop_bulge, bool scoop_mid_vertices,
+                                     const std::string& query_cache, int num_threads,
+                                     bool canonical_queries) {
     SubgridPipelineOpts opts;
+    opts.query_cache = parse_query_cache(query_cache);
+    opts.num_threads = num_threads;
+    opts.canonical_queries = canonical_queries;
     opts.mod2 = mod2;
     opts.greedy = greedy;
     opts.use_robust = robust;
@@ -538,8 +552,13 @@ SubgridPipelineOpts make_primal_opts(bool mod2, bool greedy, bool robust, bool p
 }
 
 DualSubgridPipelineOpts make_dual_opts(bool mod2, bool robust, bool progress, double reg_alpha,
-                                       bool project_duals, bool use_normals) {
+                                       bool project_duals, bool use_normals,
+                                       const std::string& query_cache, int num_threads,
+                                       bool canonical_queries) {
     DualSubgridPipelineOpts opts;
+    opts.query_cache = parse_query_cache(query_cache);
+    opts.num_threads = num_threads;
+    opts.canonical_queries = canonical_queries;
     opts.mod2 = mod2;
     opts.use_robust = robust;
     opts.show_progress = progress;
@@ -853,12 +872,13 @@ Returns:
         "primal_from_mesh",
         [](const py::object& vertices, const py::object& faces, size_t resolution, bool preprocess,
            unsigned int seed, bool cgal, bool mod2, bool greedy, double scoop_bulge, bool scoop_mid_vertices,
-           const std::string& merge, double merge_eps, bool orient, bool robust, bool progress, bool verbose) {
+           const std::string& merge, double merge_eps, bool orient, bool robust, bool progress, bool verbose,
+           const std::string& query_cache, int num_threads, bool canonical_queries) {
             auto V = parse_positions(vertices, "vertices");
             auto F = parse_polygons(faces, V.size(), "faces");
             const Merge merge_mode = parse_merge(merge);
             const auto opts = make_primal_opts(mod2, greedy, robust, progress, verbose, scoop_bulge,
-                                               scoop_mid_vertices);
+                                               scoop_mid_vertices, query_cache, num_threads, canonical_queries);
             std::unique_ptr<InputQueryHandler> handler;
             {
                 py::gil_scoped_release nogil;
@@ -870,6 +890,7 @@ Returns:
         "cgal"_a = false, "mod2"_a = false, "greedy"_a = false, "scoop_bulge"_a = 0.001,
         "scoop_mid_vertices"_a = true, "merge"_a = "combinatorial", "merge_eps"_a = 1e-8, "orient"_a = true,
         "robust"_a = false, "progress"_a = false, "verbose"_a = false,
+        "query_cache"_a = "none", "num_threads"_a = 1, "canonical_queries"_a = true,
         R"doc(Extract a primal isosurface from an in-memory triangle mesh.
 
 Args:
@@ -901,10 +922,11 @@ Returns:
         "primal_from_mesh_file",
         [](const std::string& path, size_t resolution, bool preprocess, unsigned int seed, bool cgal,
            bool mod2, bool greedy, double scoop_bulge, bool scoop_mid_vertices, const std::string& merge,
-           double merge_eps, bool orient, bool robust, bool progress, bool verbose) {
+           double merge_eps, bool orient, bool robust, bool progress, bool verbose,
+           const std::string& query_cache, int num_threads, bool canonical_queries) {
             const Merge merge_mode = parse_merge(merge);
             const auto opts = make_primal_opts(mod2, greedy, robust, progress, verbose, scoop_bulge,
-                                               scoop_mid_vertices);
+                                               scoop_mid_vertices, query_cache, num_threads, canonical_queries);
             std::unique_ptr<InputQueryHandler> handler;
             {
                 py::gil_scoped_release nogil;
@@ -918,6 +940,7 @@ Returns:
         "mod2"_a = false, "greedy"_a = false, "scoop_bulge"_a = 0.001, "scoop_mid_vertices"_a = true,
         "merge"_a = "combinatorial", "merge_eps"_a = 1e-8, "orient"_a = true, "robust"_a = false,
         "progress"_a = false, "verbose"_a = false,
+        "query_cache"_a = "none", "num_threads"_a = 1, "canonical_queries"_a = true,
         "Extract a primal isosurface from a mesh file (OBJ / PLY / OFF).\n"
         "Same options as primal_from_mesh; this is the exact equivalent of\n"
         "`subgrid -i <path> -r <resolution>`.");
@@ -926,10 +949,11 @@ Returns:
         "primal_from_sdf",
         [](const std::string& name, size_t resolution, double step_size, bool mod2, bool greedy,
            double scoop_bulge, bool scoop_mid_vertices, const std::string& merge, double merge_eps,
-           bool orient, bool robust, bool progress, bool verbose) {
+           bool orient, bool robust, bool progress, bool verbose,
+           const std::string& query_cache, int num_threads, bool canonical_queries) {
             const Merge merge_mode = parse_merge(merge);
             const auto opts = make_primal_opts(mod2, greedy, robust, progress, verbose, scoop_bulge,
-                                               scoop_mid_vertices);
+                                               scoop_mid_vertices, query_cache, num_threads, canonical_queries);
             auto handler = make_sdf_handler(name, step_size);
             return run_primal(std::move(handler), resolution, opts, merge_mode, merge_eps, orient);
         },
@@ -937,6 +961,7 @@ Returns:
         "greedy"_a = false, "scoop_bulge"_a = 0.001, "scoop_mid_vertices"_a = true,
         "merge"_a = "combinatorial", "merge_eps"_a = 1e-8, "orient"_a = true, "robust"_a = false,
         "progress"_a = false, "verbose"_a = false,
+        "query_cache"_a = "none", "num_threads"_a = 1, "canonical_queries"_a = true,
         "Extract a primal isosurface from a built-in signed distance function.\n"
         "`name` must be one of available_sdfs(); `step_size` is the marching step used\n"
         "to bracket sign changes along each tet edge.");
@@ -944,10 +969,11 @@ Returns:
     m.def(
         "primal_from_npz",
         [](const std::string& path, bool mod2, bool greedy, double scoop_bulge, bool scoop_mid_vertices,
-           const std::string& merge, double merge_eps, bool orient, bool progress, bool verbose) {
+           const std::string& merge, double merge_eps, bool orient, bool progress, bool verbose,
+           const std::string& query_cache, int num_threads, bool canonical_queries) {
             const Merge merge_mode = parse_merge(merge);
             const auto opts = make_primal_opts(mod2, greedy, /*robust=*/false, progress, verbose, scoop_bulge,
-                                               scoop_mid_vertices);
+                                               scoop_mid_vertices, query_cache, num_threads, canonical_queries);
             TriangleSoup::COMB_MERGE = (merge_mode == Merge::COMBINATORIAL);
             SubgridPipelineResult r;
             {
@@ -959,6 +985,7 @@ Returns:
         "path"_a, py::kw_only(), "mod2"_a = false, "greedy"_a = false, "scoop_bulge"_a = 0.001,
         "scoop_mid_vertices"_a = true, "merge"_a = "combinatorial", "merge_eps"_a = 1e-8, "orient"_a = true,
         "progress"_a = false, "verbose"_a = false,
+        "query_cache"_a = "none", "num_threads"_a = 1, "canonical_queries"_a = true,
         "Extract a primal isosurface from an explicit tet mesh with precomputed edge\n"
         "intersections (.npz). The tet mesh comes from the file, so there is no\n"
         "resolution argument. See docs/explicit_input_format.md for the layout.");
@@ -969,10 +996,11 @@ Returns:
         "dual_from_mesh",
         [](const py::object& vertices, const py::object& faces, size_t resolution, bool preprocess,
            unsigned int seed, bool cgal, bool mod2, double reg_alpha, bool project_duals, bool use_normals,
-           bool assemble, bool robust, bool progress) {
+           bool assemble, bool robust, bool progress,
+           const std::string& query_cache, int num_threads, bool canonical_queries) {
             auto V = parse_positions(vertices, "vertices");
             auto F = parse_polygons(faces, V.size(), "faces");
-            const auto opts = make_dual_opts(mod2, robust, progress, reg_alpha, project_duals, use_normals);
+            const auto opts = make_dual_opts(mod2, robust, progress, reg_alpha, project_duals, use_normals, query_cache, num_threads, canonical_queries);
             std::unique_ptr<InputQueryHandler> handler;
             {
                 py::gil_scoped_release nogil;
@@ -983,6 +1011,7 @@ Returns:
         "vertices"_a, "faces"_a, "resolution"_a = 64, py::kw_only(), "preprocess"_a = true, "seed"_a = 1u,
         "cgal"_a = false, "mod2"_a = false, "reg_alpha"_a = 0.1, "project_duals"_a = false,
         "use_normals"_a = true, "assemble"_a = true, "robust"_a = false, "progress"_a = false,
+        "query_cache"_a = "none", "num_threads"_a = 1, "canonical_queries"_a = true,
         R"doc(Extract a dual (QEF) surface from an in-memory triangle mesh.
 
 Shares the mesh arguments and preprocessing of primal_from_mesh. Dual-specific:
@@ -998,8 +1027,9 @@ Shares the mesh arguments and preprocessing of primal_from_mesh. Dual-specific:
         "dual_from_mesh_file",
         [](const std::string& path, size_t resolution, bool preprocess, unsigned int seed, bool cgal,
            bool mod2, double reg_alpha, bool project_duals, bool use_normals, bool assemble, bool robust,
-           bool progress) {
-            const auto opts = make_dual_opts(mod2, robust, progress, reg_alpha, project_duals, use_normals);
+           bool progress,
+           const std::string& query_cache, int num_threads, bool canonical_queries) {
+            const auto opts = make_dual_opts(mod2, robust, progress, reg_alpha, project_duals, use_normals, query_cache, num_threads, canonical_queries);
             std::unique_ptr<InputQueryHandler> handler;
             {
                 py::gil_scoped_release nogil;
@@ -1012,29 +1042,33 @@ Shares the mesh arguments and preprocessing of primal_from_mesh. Dual-specific:
         "path"_a, "resolution"_a = 64, py::kw_only(), "preprocess"_a = true, "seed"_a = 1u, "cgal"_a = false,
         "mod2"_a = false, "reg_alpha"_a = 0.1, "project_duals"_a = false, "use_normals"_a = true,
         "assemble"_a = true, "robust"_a = false, "progress"_a = false,
+        "query_cache"_a = "none", "num_threads"_a = 1, "canonical_queries"_a = true,
         "Extract a dual (QEF) surface from a mesh file (OBJ / PLY / OFF).\n"
         "Equivalent to `dualSubgrid -i <path> -r <resolution>`.");
 
     m.def(
         "dual_from_sdf",
         [](const std::string& name, size_t resolution, double step_size, bool mod2, double reg_alpha,
-           bool project_duals, bool use_normals, bool assemble, bool robust, bool progress) {
-            const auto opts = make_dual_opts(mod2, robust, progress, reg_alpha, project_duals, use_normals);
+           bool project_duals, bool use_normals, bool assemble, bool robust, bool progress,
+           const std::string& query_cache, int num_threads, bool canonical_queries) {
+            const auto opts = make_dual_opts(mod2, robust, progress, reg_alpha, project_duals, use_normals, query_cache, num_threads, canonical_queries);
             auto handler = make_sdf_handler(name, step_size);
             return run_dual(std::move(handler), resolution, opts, assemble);
         },
         "name"_a, "resolution"_a = 64, py::kw_only(), "step_size"_a = 1e-3, "mod2"_a = false,
         "reg_alpha"_a = 0.1, "project_duals"_a = false, "use_normals"_a = true, "assemble"_a = true,
         "robust"_a = false, "progress"_a = false,
+        "query_cache"_a = "none", "num_threads"_a = 1, "canonical_queries"_a = true,
         "Extract a dual (QEF) surface from a built-in signed distance function.\n"
         "`name` must be one of available_sdfs().");
 
     m.def(
         "dual_from_npz",
         [](const std::string& path, bool mod2, double reg_alpha, bool project_duals, bool use_normals,
-           bool assemble, bool progress) {
+           bool assemble, bool progress,
+           const std::string& query_cache, int num_threads, bool canonical_queries) {
             const auto opts = make_dual_opts(mod2, /*robust=*/false, progress, reg_alpha, project_duals,
-                                             use_normals);
+                                             use_normals, query_cache, num_threads, canonical_queries);
             DualSubgridPipelineResult r;
             {
                 py::gil_scoped_release nogil;
@@ -1053,6 +1087,7 @@ Shares the mesh arguments and preprocessing of primal_from_mesh. Dual-specific:
         },
         "path"_a, py::kw_only(), "mod2"_a = false, "reg_alpha"_a = 0.1, "project_duals"_a = false,
         "use_normals"_a = true, "assemble"_a = true, "progress"_a = false,
+        "query_cache"_a = "none", "num_threads"_a = 1, "canonical_queries"_a = true,
         "Extract a dual (QEF) surface from an explicit tet mesh with precomputed edge\n"
         "intersections (.npz). The archive needs an `isect_normals` array unless\n"
         "use_normals=False. See docs/explicit_input_format.md.");
