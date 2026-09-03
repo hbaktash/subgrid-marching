@@ -66,92 +66,27 @@ exhaustively.
 | `--cgal` `spot.obj` r=48 | total 2.93s | **1.13s** |
 
 **`slab` needs the implicit grid, and that is the only place a cache helps.**
-For `--npz` input it is ignored (with a warning): `PrecomputedQueryHandler` is
-*already* a hash lookup on the canonical edge, so caching it would wrap one hash
-lookup in another. Measured, a general reference-counted cache made the npz query
-phase about twice as slow (0.096s → 0.179s on `spot_N64`) while reaching the same
-query count — which is why only the slab window survives.
+For `--npz` input it is ignored: `PrecomputedQueryHandler` is
+*already* a hash lookup on the canonical edge.
 
 ## Canonical query direction (on by default)
 
 The cache asks for each edge once, in the canonical `min(i,j) → max(i,j)`
 direction, and flips the result for tets that traverse it the other way. The
 uncached path instead asks once per incident tet, in that tet's own direction —
-and **no handler is exactly direction-symmetric**. Measured over 400 random
-segments (`tests/test_pipeline_parity.cpp`), worst `|t_fwd − (1−t_rev)|`:
+and **no handler is exactly direction-symmetric**; either due to nature of the query in sphere marching or numerical errors in ray triangle intersection (except with CGAL EPECK).
 
-| handler | t asymmetry | crossing-count disagreement |
-|---|---|---|
-| precomputed (`.npz`) | 0 — already canonical | none |
-| CGAL / EPECK | 6.0e-15 — rounding `t` to double | none in 400 |
-| mesh / FCPW | 3.3e-6 — float internals | none in 400 |
-| SDF `Sphere`, step 1e-2 | 2.1e-4 | none in 400 |
-| SDF `Cables`, step 1e-2 | 6.7e-3 ≈ ⅔ of a step | **10 / 400 (2.5%)** |
+Canonicalizing makes the construction produce the same mesh regardless of how each tet vertices are locally or globally indexed, and regardless of which end of the edge the ray starts from. Tested canonicalization against the uncached path on a bunch of examples:
 
-CGAL is the exception that proves the rule: in exact arithmetic its `t` and
-`1-t` are exact rationals, and the entire residue comes from rounding each to a
-double independently at the very end — a few tens of ULPs, some nine orders of
-magnitude tighter than FCPW.
-
-So without this flag, **two tets sharing a grid edge already disagree** about
-where — and for SDF input, sometimes how many times — the surface crosses it.
-That is pre-existing behaviour, not something the cache introduced; it is simply
-why a cached run does not match an uncached one byte for byte.
-
-Canonicalizing makes the uncached path ask the same way the cache does. It issues
-**no extra queries** (measured: 6.079s vs 6.079s on `Cables` r=48, 0.422s vs
-0.428s on `spot` r=64) — only a reversal on the roughly half of tet edges that run
-high index to low. With it on, every configuration agrees bit for bit:
-
-| | cached vs uncached |
-|---|---|
-| canonical off (`--noCanonicalQueries`) | differs (see tolerances above) |
-| canonical on (default) | **identical** |
-
-It is on by default because it is free and removes a real inconsistency, but it
-does change what the extractor produces. Measured against the non-canonical path:
-
-- **10 paper meshes at r=96:** 9 kept identical topology (max vertex shift
-  5e-7 – 2.7e-6, consistent with a ~1.5e-4 error in `t` over a 0.021-long grid
-  edge). The tenth, `cell_anatomy1.obj`, changed by a single vertex and face.
-  Sweeping every one of its 5,391,648 unique grid edges in both directions found
-  exactly **3** where the crossing *count* disagreed — and all three touch the
-  same grid node, `(60,53,23)`, with the disputed crossing sitting at
-  `t = 3.5e-7` or `t = 0.9999996`. In other words the input surface passes almost
-  exactly through that node, and whether the grazing hit is reported depends on
-  which end the ray starts from. This is the degenerate coincidence `--seed`
-  exists to break: at seeds 2, 3 and 4 the same mesh has **zero** count
-  mismatches. It is not a general property of mesh input.
-- **All 63 built-in SDFs at r=64:** `non_even` came out **identical on every
-  one** — never worse, never better, including the nine with nonzero counts.
-  Vertex and face counts matched exactly on 37 of 62; among those that differed
-  the median was 0.19%, and the outliers were the fractals, where the surface has
-  detail far below the sampling scale and the crossing count is genuinely
-  ambiguous: `Serpinski` 10.2% of vertices (but 0.06% of faces), `Mandelbulb`
-  6.6% / 3.8%, `Julia` 3.7% / 0.05%.
-
-Face counts move far less than vertex counts almost everywhere, i.e. the surface
-itself is essentially unchanged and most of the delta is in how many distinct
-vertices the merge produces. Pass `--noCanonicalQueries` to reproduce
-pre-canonical output exactly.
+- The output for meshes does not generally change with/without canonicalization, because the mesh query is already symmetric. The only exception is when the mesh goes through a grid node, which is a degenerate case; the flags `--seed` (perturbing the input) and `--cgal` (Exact queries) are exactly made to take care of these type of degeneracies.
+- For SDFs, canonicalization is important: given how we march the SDF and jump across the roots, the output can change depending on which end of the edge the ray starts from.  
+  
 
 ## `-j`: threads
 
 The tet loop runs in chunks — one cube layer per chunk for the grid. Within a
 chunk the query and per-tet construction run across threads; the chunk is then
 merged into the global soup **sequentially, in flat tet order**.
-
-The merge has to stay sequential (it threads every vertex signature through one
-shared map), and keeping it in tet order is what makes the result independent of
-the thread count. Per-tet construction depends only on the tet's own positions,
-global indices, and edge intersections — never on iteration history — so local
-soups are order-independent and replaying them in order reproduces the serial
-mesh exactly. **Output is bit-identical at any thread count**, verified across
-1/2/4/8 threads for both pipelines, all cache modes, and all input families.
-
-Chunking is a requirement, not a tuning knob: every local `TriangleSoup` carries
-its own signature map, so buffering all of them before merging would run past a
-gigabyte at n=128.
 
 Threading uses `std::thread` only (`include/common/parallel_for.h`) — no OpenMP,
 no TBB. Chunks are handed out dynamically from an atomic cursor rather than split
@@ -161,7 +96,7 @@ cluster near the surface.
 
 ### What does not scale
 
-The merge is sequential, so it bounds the speedup: it is roughly 10% of the tet
+The merge is sequential, so it bounds the speedup: it is roughly 10-20% of the tet
 loop, capping it near 5-6× however many cores you have. The dual pipeline gains
 least (1.85×) because its post-pipeline assembly —
 `construct_primal_mesh_from_face_per_edge_data` and `construct_dual_mesh` — is
@@ -200,5 +135,3 @@ this work. Of the query handlers:
 The handler's diagnostic counters (`total_queries`, `edge_query_counts`) are
 plain non-atomic shared state; the threaded path turns them off via
 `collect_query_stats` and skips `update_global_query_count_map`.
-
-The test suite runs clean under ThreadSanitizer.
