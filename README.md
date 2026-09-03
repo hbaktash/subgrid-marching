@@ -267,7 +267,7 @@ If a numerical self-intersection test ever flags the output, it is likely detect
 
 The core algorithm and contributions — the per-tet constructions in `subgrid_MT/`, and the normal-coordinate machinery in `nc/`, and core of the query/utility functions — were designed and written without the use of coding agent assistance; agents were only used in these core parts for mechanical changes and not for logical changes, design, or optimization etc. 
 
-The surrounding infrastructure was developed in collaboration with coding agents. Parallelization and caching (see `docs/performance.md`), were largely written with agents.
+The surrounding infrastructure was developed in collaboration with coding agents. Parallelization and caching (see `docs/performance.md`) were largely written with agents.
 
 
 ## Citation
