@@ -152,9 +152,22 @@ and both are safe to combine:
 ./build/subgrid -i ./data/meshes/spot.obj -r 128 -j 0 --queryCache slab -o ./out/spot.obj
 ```
 
-That is 7.2s → 2.5s on a 10-core laptop, and 15.9s → 1.4s for `-s Cables -r 64`.
-Threading does not change the result: output is bit-identical at any thread
-count, and the cache matches the uncached path exactly.
+That is 7.2s → 2.5s on a 10-core laptop, and 15.9s → 1.4s for `-s Cables -r 64`;
+`--cgal` gains the most (6.4×) because each exact query is expensive. Neither
+flag changes the result — output is bit-identical at any thread count, and the
+cache matches the uncached path exactly.
+
+That last guarantee rests on **canonical queries**, which are on by default: each
+grid edge is queried once in a fixed direction, rather than once per incident tet
+in that tet's own direction. No intersection routine is exactly
+direction-symmetric, so without this two tets sharing an edge can disagree about
+where the surface crosses it. Canonicalizing costs no extra queries and is what
+makes every configuration agree exactly.
+
+It does change results slightly versus versions predating it. Mesh input keeps
+its topology (vertices move ~1e-6); SDF input can shift a bit more, because the
+march genuinely disagrees with itself depending on which end it starts from.
+`--noCanonicalQueries` restores the old behaviour.
 
 See [performance](docs/performance.md) for what the options actually do, when
 each one pays, and the measurements behind those numbers.

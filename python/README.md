@@ -80,9 +80,35 @@ run the per-tet construction everywhere, and assemble the output mesh.
 | `primal_from_npz(path, ...)` | `dual_from_npz(...)` | explicit tet mesh + precomputed hits |
 
 Shared options mirror the CLI flags: `mod2`, `greedy`, `merge` /
-`merge_eps`, `preprocess`, `seed`, `cgal`, `progress`. The dual adds `reg_alpha`,
+`merge_eps`, `preprocess`, `seed`, `cgal`, `progress`, plus `num_threads`,
+`query_cache` and `canonical_queries` (below). The dual adds `reg_alpha`,
 `project_duals`, `use_normals`, and `assemble`. `help(smt.primal_from_mesh)` has the
 full list.
+
+#### Going faster
+
+```python
+smt.primal_from_mesh_file("mesh.obj", 128, num_threads=0, query_cache="slab")
+```
+
+| Option | Default | Effect |
+|---|---|---|
+| `num_threads` | `1` | Worker threads for the tet loop; `0` uses every core |
+| `query_cache` | `"none"` | `"slab"` reuses edge intersections across the tets sharing an edge (grid input only; ignored for `*_from_npz`, whose hits are already per-edge) |
+
+Roughly 2-3x on mesh input and up to 10x+ on SDFs, where each query is more
+expensive. **Neither changes the result:** output is bit-identical at any thread
+count, and the cached path matches the uncached one exactly.
+
+That exactness rests on `canonical_queries=True` (the default), which queries
+each grid edge once in a fixed direction instead of once per incident tet in
+that tet's own direction, so tets sharing an edge always agree about where the
+surface crosses it. It costs nothing. It does shift results very slightly versus
+versions predating it — mesh input keeps its topology, SDF input can move a
+little more — so pass `canonical_queries=False` to reproduce the older output.
+
+See [docs/performance.md](https://github.com/hbaktash/subgrid-marching/blob/main/docs/performance.md)
+for the mechanics and the measurements.
 
 Vertex merging defaults to the exact **combinatorial** merge, which is what makes the
 output watertight without an epsilon. `merge="numerical"` welds by position within
@@ -157,9 +183,10 @@ Full specification: [construction policy](https://github.com/hbaktash/subgrid-ma
 - **Memory.** Returned arrays own the C++ buffer they were built from, handed over
   rather than copied (`result.vertices.base` is the capsule that owns it). `.faces`
   entries are slices of `face_vertices`, not copies.
-- **Threading.** The core keeps a process-wide merge flag, so calls must not overlap
-  across threads. The GIL *is* released during the pipelines, so other Python threads
-  keep running.
+- **Threading.** To parallelize one extraction, pass `num_threads`; the work happens
+  in C++ with the GIL released. Do *not* instead run several pipeline calls
+  concurrently from Python threads — the core keeps a process-wide merge flag, so
+  overlapping calls corrupt each other. One call at a time, internally parallel.
 - **Progress output.** `progress=True` writes to the process stdout from C++, so it
   shows up in a terminal but not in a notebook cell.
 - **Exact queries.** `cgal=True` needs the optional CGAL build, which the published
