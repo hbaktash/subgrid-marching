@@ -140,17 +140,11 @@ Polyscope window opens after extraction unless `--noViz` is given.
 
 ### Going faster
 
-Extraction is single-threaded by default; `-j` changes that. Edge-query reuse (additional speedup) is already on by default, and `--noQueryCache` turns it off.
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `-j, --threads` | 1 | Worker threads for the tet loop; `0` uses every core |
-| `--noQueryCache` | off (cache on) | Stop reusing each grid edge's intersections across the tets sharing it |
+Extraction is single-threaded by default; `-j 0` changes that to use all available cores.
 
 ```sh
 ./build/subgrid -i ./data/meshes/spot.obj -r 128 -j 0 -o ./out/spot.obj
 ```
-
 See [performance](docs/performance.md) for more details on the speed up options.
 
 ### dualSubgrid — dual extraction
@@ -168,7 +162,7 @@ See [performance](docs/performance.md) for more details on the speed up options.
 
 
 Flags shared with `subgrid` (`-i`, `-s`, `--npz`, `-r`, `-o`, `--mod2`, `--noViz`,
-`--noPBar`, `--inputSaveDir`, `--cgal`, `--seed`) behave identically.
+`--noPBar`, `--inputSaveDir`, `--cgal`, `--seed`, `j`) behave identically.
 
 Additional flags:
 
@@ -269,6 +263,13 @@ and the `dual_` equivalents); without the CGAL build it raises.
 The output produced by this method—regardless of whether it is closed or orientable—is mathematically guaranteed to be free of self-intersections (see Appendix D in the [paper](https://hbaktash.github.io/projects/subgrid-marching-tetrahedra/index.html)). The per-tet self-intersection tests in `tests/test_self_intersection.cpp` confirm this empirically across thousands of configurations of edge-intersection counts and locations.
 If a numerical self-intersection test ever flags the output, it is likely detecting triangles that are *near*-overlapping but not actually overlapping—a false positive rather than a real intersection. How closely such triangles are allowed to approach is governed by the "push-in" epsilon (of Section 3.2.3 from the paper), exposed as the `scoop_bulge` parameter of `SubgridPipelineOpts` (`subgrid_pipeline.h`, default `1e-3`); a small enough `scoop_bulge` guarantees the intersection-free property, while increasing it pushes near-coincident triangles further apart. A principled (non-heuristic) way to choose this value is left to future work.
 
+## A note on the use of coding agents
+
+The core algorithm and contributions — the per-tet constructions in `subgrid_MT/`, and the normal-coordinate machinery in `nc/`, and some of the query/utility functions — were designed and written without the use of coding agent assistance; agents were only used in these core parts for mechanical changes and not for logical changes or optimization etc. 
+
+The surrounding infrastructure was developed in collaboration with coding agents. Parallelization and caching in `docs/performance.md`, were largely written with agents.
+
+
 ## Citation
 
 If you use this code in your projects, please cite:
@@ -290,6 +291,7 @@ If you use this code in your projects, please cite:
   url       = {https://doi.org/10.1145/3811358}
 }
 ```
+
 
 ## License
 
