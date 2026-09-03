@@ -140,22 +140,22 @@ Polyscope window opens after extraction unless `--noViz` is given.
 
 ### Going faster
 
-Extraction is single-threaded and uncached by default. Two flags change that,
-and both are safe to combine:
+Extraction is single-threaded by default; `-j` changes that. Edge-query reuse is
+already on, and `--noQueryCache` turns it off.
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-j, --threads` | 1 | Worker threads for the tet loop; `0` uses every core |
-| `--queryCache` | `none` | `slab` reuses edge intersections across the tets sharing an edge (grid input only) |
+| `--noQueryCache` | off (cache on) | Stop reusing each grid edge's intersections across the tets sharing it |
 
 ```sh
-./build/subgrid -i ./data/meshes/spot.obj -r 128 -j 0 --queryCache slab -o ./out/spot.obj
+./build/subgrid -i ./data/meshes/spot.obj -r 128 -j 0 -o ./out/spot.obj
 ```
 
-That is 7.2s → 2.5s on a 10-core laptop, and 15.9s → 1.4s for `-s Cables -r 64`;
-`--cgal` gains the most (6.4×) because each exact query is expensive. Neither
-flag changes the result — output is bit-identical at any thread count, and the
-cache matches the uncached path exactly.
+That is 7.2s → 2.5s on a 10-core laptop versus a serial uncached run, and
+15.9s → 1.4s for `-s Cables -r 64`; `--cgal` gains the most (6.4×) because each
+exact query is expensive. Neither changes the result — output is bit-identical at
+any thread count, and the cache matches the uncached path exactly.
 
 That last guarantee rests on **canonical queries**, which are on by default: each
 grid edge is queried once in a fixed direction, rather than once per incident tet

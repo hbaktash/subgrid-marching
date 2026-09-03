@@ -101,11 +101,12 @@ additionally records:
 
 Reconstruction is per-tetrahedron, but the *inputs* are not: each grid edge is
 shared by 4 (axis) or 6 (face-diagonal) tets, so the plain loop queries every
-edge about five times, and steps 1-3 above are independent per tet. Three opt-in
-options exploit that — `--queryCache slab`, `-j/--threads`, and `--canonicalQueries` —
-without touching the per-tet constructions. Threading is bit-exact at any thread
-count; the cache shifts the result very slightly unless `--canonicalQueries` is
-on. See [performance.md](performance.md) for the mechanics and measurements.
+edge about five times, and steps 1-3 above are independent per tet. Three options
+exploit that without touching the per-tet constructions: edge query reuse and
+canonical query direction, both on by default, and `-j/--threads`, which is not.
+Threading is bit-exact at any thread count, and the cache is exact as long as
+canonical queries stay on. See [performance.md](performance.md) for the mechanics
+and the measurements.
 
 ## Entry points
 

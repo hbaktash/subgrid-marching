@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
     args::Flag noVisFlag(parser, "noVis", "Disable visualization", {"noViz"});
     args::Flag noProgBar(parser, "noProgBar", "Disable progress bar", {"noPBar"});
     args::ValueFlag<unsigned int> seedFlag(parser, "seed", "Seed for the rigid decorrelation translation of mesh input (default 1)", {"seed"}, 1u);
-    args::ValueFlag<std::string> queryCacheFlag(parser, "queryCache", "Reuse edge intersections across the tets sharing an edge: none (default) or slab (grid input only)", {"queryCache"}, "none");
+    args::Flag noQueryCacheFlag(parser, "noQueryCache", "Query all six edges of every tet instead of reusing each grid edge's intersections across the tets sharing it (see docs/performance.md)", {"noQueryCache"});
     args::ValueFlag<int> threadsFlag(parser, "threads", "Worker threads for the tet loop; 1 = serial (default), 0 = all cores", {'j', "threads"}, 1);
     args::Flag noCanonicalFlag(parser, "noCanonicalQueries", "Query each edge in each tet's own direction instead of one canonical direction; tets sharing an edge may then disagree slightly (see docs/performance.md)", {"noCanonicalQueries"});
     args::Flag cgalFlag(parser, "cgal", "Use exact CGAL (EPECK) intersection queries for mesh input (requires build -DSUBGRID_WITH_CGAL=ON)", {"cgal"});
@@ -145,19 +145,8 @@ int main(int argc, char** argv) {
         opts.use_robust = USE_ROBUST_QUERIES;
         opts.show_progress = !noProgBar;
         opts.num_threads = args::get(threadsFlag);
+        opts.query_cache = !noQueryCacheFlag;
         opts.canonical_queries = !noCanonicalFlag;
-        // ---- query cache ----
-        // Every setting extracts the same surface; they differ in how many
-        // intersection queries get issued. See query/edge_isect_cache.h.
-        {
-            const std::string qc = args::get(queryCacheFlag);
-            if      (qc == "none")    opts.query_cache = QueryCache::NONE;
-            else if (qc == "slab")    opts.query_cache = QueryCache::SLAB;
-            else {
-                log_error("--queryCache must be one of: none, slab (got '" + qc + "').");
-                return EXIT_FAILURE;
-            }
-        }
         opts.reg_alpha = args::get(regAlpha);
         opts.project_duals = args::get(projectDuals);
         opts.no_normal = noNormalFlag;

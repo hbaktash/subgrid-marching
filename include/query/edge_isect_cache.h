@@ -22,16 +22,6 @@
 // It is optional; with no cache the pipeline queries every tet edge directly,
 // exactly as it always has.
 
-// How to reuse edge intersections across the tets that share an edge.
-//
-// Only meaningful for the implicit grid: explicit tet meshes arrive with their
-// intersections precomputed, so PrecomputedQueryHandler is already a hash lookup
-// on the canonical edge and caching it just adds a second lookup.
-enum class QueryCache {
-    NONE,     // query all six edges of every tet (the original behaviour)
-    SLAB      // sliding two-plane window; one query per grid edge. Grid input only.
-};
-
 // One edge's intersections, stored in the canonical i < j direction: t-values
 // ascending in [0, 1] measured from the lower-indexed endpoint, normals
 // parallel to them (empty when normals were not recorded).
@@ -148,17 +138,21 @@ private:
 };
 
 
-// ---- picking a backend for a tet range ----
+// ---- building one for a tet range ----
 //
-// Overloaded rather than templated so each tet range says for itself what it can
-// support. Returns null for QueryCache::NONE, and always null for an explicit tet
-// mesh: SLAB needs the grid's node planes, and there is nothing to gain there
-// anyway (see the note on the enum above).
+// Overloaded rather than templated so each tet range says for itself whether it
+// can support a cache. Returns null when `enabled` is false, and always null for
+// an explicit tet mesh: the sliding window needs the grid's node planes, and
+// there is nothing to gain there anyway -- those inputs arrive with their
+// intersections already precomputed per edge, so PrecomputedQueryHandler is
+// itself a hash lookup on the canonical edge and wrapping it in another one only
+// costs time. That fallback is silent, not a warning: it is the normal outcome
+// for npz input, not a misconfiguration.
 
 std::unique_ptr<EdgeIsectCache> make_edge_cache(
-    QueryCache kind, const TetGridRange& range, int num_threads = 1);
+    bool enabled, const TetGridRange& range, int num_threads = 1);
 std::unique_ptr<EdgeIsectCache> make_edge_cache(
-    QueryCache kind, const ExplicitTetRange& range, int num_threads = 1);
+    bool enabled, const ExplicitTetRange& range, int num_threads = 1);
 
 // Tets per cache chunk, or 0 when the range has no chunk structure (the cache's
 // begin_chunk is then called once, for chunk 0). One cube layer for the grid:

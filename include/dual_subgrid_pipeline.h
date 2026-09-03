@@ -18,7 +18,12 @@ struct DualSubgridPipelineOpts {
     bool project_duals = false;    // clip dual points back inside the tet
     bool no_normal = false;        // ignore normals: place each dual point at the
                                    // boundary-polygon centroid instead of solving a QEF
-    QueryCache query_cache = QueryCache::NONE;  // edge intersection reuse
+    // Reuse each grid edge's intersections across the 4-6 tets that share it,
+    // instead of querying all six edges of every tet: 6n^3 queries rather than
+    // 30n^3, in O(n^2) memory. Faster at every resolution measured and, with
+    // canonical_queries on, bit-identical to querying directly. No effect on
+    // explicit tet meshes, whose intersections are already precomputed per edge.
+    bool query_cache = true;
     // Query every edge in the canonical min->max direction and flip for tets that
     // traverse it the other way, so tets sharing an edge always agree on where --
     // and how many times -- the surface crosses it. Costs no extra queries, and a

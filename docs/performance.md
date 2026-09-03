@@ -1,25 +1,26 @@
 # Performance: threading and query reuse
 
-Two opt-in options make the tet loop faster without changing the per-tet
-construction, plus one correctness option that is on by default. All compose.
+Three options control how the tet loop runs. Only threading is opt-in; the other
+two are on by default and exist mainly to be turned off. All compose, and none
+changes the surface the per-tet construction produces.
 
 | Option | CLI | Python | Default |
 |--------|-----|--------|---------|
 | Worker threads | `-j, --threads` | `num_threads=` | `1` (serial); `0` = all cores |
-| Edge query reuse | `--queryCache` | `query_cache=` | `none` |
+| Edge query reuse | `--noQueryCache` to disable | `query_cache=` | **on** |
 | Canonical query direction | `--noCanonicalQueries` to disable | `canonical_queries=` | **on** |
 
 ```sh
-./build/subgrid -i mesh.obj -r 128 -j 0 --queryCache slab -o out.obj
+./build/subgrid -i mesh.obj -r 128 -j 0 -o out.obj      # caching is already on
 ```
 
 ```python
-smt.primal_from_mesh_file("mesh.obj", 128, num_threads=0, query_cache="slab")
+smt.primal_from_mesh_file("mesh.obj", 128, num_threads=0)
 ```
 
 Measured on a 10-core M-series laptop, primal extraction unless noted:
 
-| run | default | `-j 0 --queryCache slab` | |
+| run | serial, uncached | `-j 0` (cache on by default) | |
 |---|---|---|---|
 | `-s Cables -r 64` (SDF) | 15.9s | **1.39s** | 11.5× |
 | `-i spot.obj -r 128` (mesh) | 7.21s | **2.57s** | 2.8× |
@@ -43,9 +44,9 @@ against only
 distinct edges — **about five queries per edge**. Meanwhile the per-tet work
 itself is embarrassingly parallel; only the final merge is not.
 
-## `--queryCache`: ask once per edge
+## Edge query reuse (on by default)
 
-`slab` reaches exactly one query per unique edge (asserted in
+The cache reaches exactly one query per unique edge (asserted in
 `tests/test_pipeline_parity.cpp`). A tet in cube layer `iz` only touches grid
 nodes in planes `iz` and `iz+1`, so the cache holds a two-plane window and slides
 it. The window's contents follow from index arithmetic alone, with no tet
@@ -58,7 +59,7 @@ Only edges that actually have crossings are stored — inside a loaded plane a
 lookup miss unambiguously means "queried, none", because the plane was enumerated
 exhaustively.
 
-| input | `none` | `slab` |
+| input | `--noQueryCache` | default |
 |---|---|---|
 | mesh `spot.obj` r=128 | query 3.02s | **1.71s** |
 | SDF `Cables` r=64 | query 13.1s | **2.81s** |

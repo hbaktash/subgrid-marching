@@ -88,13 +88,13 @@ full list.
 #### Going faster
 
 ```python
-smt.primal_from_mesh_file("mesh.obj", 128, num_threads=0, query_cache="slab")
+smt.primal_from_mesh_file("mesh.obj", 128, num_threads=0)   # caching is already on
 ```
 
 | Option | Default | Effect |
 |---|---|---|
 | `num_threads` | `1` | Worker threads for the tet loop; `0` uses every core |
-| `query_cache` | `"none"` | `"slab"` reuses edge intersections across the tets sharing an edge (grid input only; ignored for `*_from_npz`, whose hits are already per-edge) |
+| `query_cache` | `True` | Reuse each grid edge's intersections across the tets sharing it. Faster at every resolution measured; `False` disables. No effect on `*_from_npz`, whose hits are already per-edge |
 
 Roughly 2-3x on mesh input and up to 10x+ on SDFs, where each query is more
 expensive. **Neither changes the result:** output is bit-identical at any thread

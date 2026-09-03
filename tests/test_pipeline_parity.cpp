@@ -140,7 +140,7 @@ void require_same_soup(const TriangleSoup& a, const TriangleSoup& b, double pos_
     }
 }
 
-SubgridPipelineResult run_primal(const ParityInput& in, QueryCache cache, int threads = 1,
+SubgridPipelineResult run_primal(const ParityInput& in, bool cache, int threads = 1,
                                 bool canonical = false) {
     SubgridPipelineOpts opts;
     opts.query_cache = cache;
@@ -151,7 +151,7 @@ SubgridPipelineResult run_primal(const ParityInput& in, QueryCache cache, int th
     return run_subgrid_pipeline(*handler, in.res, opts);
 }
 
-DualSubgridPipelineResult run_dual(const ParityInput& in, QueryCache cache, int threads = 1,
+DualSubgridPipelineResult run_dual(const ParityInput& in, bool cache, int threads = 1,
                                   bool canonical = false) {
     DualSubgridPipelineOpts opts;
     opts.query_cache = cache;
@@ -258,11 +258,11 @@ TEST_CASE("Query cache: primal output matches the direct path",
     CombMergeGuard guard(true);
     for (const auto& in : parity_inputs()) {
         if (!in.direction_stable) continue;   // covered by the SDF test below
-        const auto baseline = run_primal(in, QueryCache::NONE);
+        const auto baseline = run_primal(in, false);
 
-        for (QueryCache cache : {QueryCache::SLAB}) {
+        for (bool cache : {true}) {
             INFO("input=" << in.name << " res=" << in.res
-                 << " cache=slab");
+                 << " cache=" << cache);
             const auto cached = run_primal(in, cache);
             REQUIRE(cached.non_zero_tets   == baseline.non_zero_tets);
             REQUIRE(cached.non_even_tets   == baseline.non_even_tets);
@@ -278,11 +278,11 @@ TEST_CASE("Query cache: dual output matches the direct path",
           "[parity][query_cache]") {
     for (const auto& in : parity_inputs()) {
         if (!in.direction_stable) continue;   // covered by the SDF test below
-        const auto baseline = run_dual(in, QueryCache::NONE);
+        const auto baseline = run_dual(in, false);
 
-        for (QueryCache cache : {QueryCache::SLAB}) {
+        for (bool cache : {true}) {
             INFO("input=" << in.name << " res=" << in.res
-                 << " cache=slab");
+                 << " cache=" << cache);
             const auto cached = run_dual(in, cache);
             REQUIRE(cached.non_zero_tets   == baseline.non_zero_tets);
             REQUIRE(cached.non_even_tets   == baseline.non_even_tets);
@@ -318,10 +318,10 @@ TEST_CASE("Query cache: SDF input shifts slightly, because its march is directio
     for (const auto& in : parity_inputs()) {
         if (in.direction_stable) continue;
 
-        const auto baseline = run_primal(in, QueryCache::NONE);
-        for (QueryCache cache : {QueryCache::SLAB}) {
+        const auto baseline = run_primal(in, false);
+        for (bool cache : {true}) {
             INFO("input=" << in.name << " res=" << in.res
-                 << " cache=slab");
+                 << " cache=" << cache);
             const auto cached = run_primal(in, cache);
 
             REQUIRE(cached.total_tets == baseline.total_tets);
@@ -354,11 +354,11 @@ TEST_CASE("Canonical queries: the cache becomes bit-exact against the direct pat
     // roughly half of tet edges that run high-index to low.
     CombMergeGuard guard(true);
     for (const auto& in : parity_inputs()) {
-        const auto baseline = run_primal(in, QueryCache::NONE, 1, /*canonical=*/true);
+        const auto baseline = run_primal(in, false, 1, /*canonical=*/true);
 
-        for (QueryCache cache : {QueryCache::SLAB}) {
+        for (bool cache : {true}) {
             INFO("primal input=" << in.name << " res=" << in.res
-                 << " cache=slab");
+                 << " cache=" << cache);
             const auto cached = run_primal(in, cache, 1, /*canonical=*/true);
             REQUIRE(cached.non_zero_tets   == baseline.non_zero_tets);
             REQUIRE(cached.non_even_tets   == baseline.non_even_tets);
@@ -368,10 +368,10 @@ TEST_CASE("Canonical queries: the cache becomes bit-exact against the direct pat
     }
 
     for (const auto& in : parity_inputs()) {
-        const auto baseline = run_dual(in, QueryCache::NONE, 1, /*canonical=*/true);
-        for (QueryCache cache : {QueryCache::SLAB}) {
+        const auto baseline = run_dual(in, false, 1, /*canonical=*/true);
+        for (bool cache : {true}) {
             INFO("dual input=" << in.name << " res=" << in.res
-                 << " cache=slab");
+                 << " cache=" << cache);
             const auto cached = run_dual(in, cache, 1, /*canonical=*/true);
             require_same_soup(cached.soup, baseline.soup, 0.0);
             REQUIRE(cached.soup.faces_per_edge == baseline.soup.faces_per_edge);
@@ -390,11 +390,11 @@ TEST_CASE("Threads: primal output is bit-identical regardless of thread count",
     // to excuse here -- exact equality or the driver is wrong.
     CombMergeGuard guard(true);
     for (const auto& in : parity_inputs()) {
-        for (QueryCache cache : {QueryCache::NONE, QueryCache::SLAB}) {
+        for (bool cache : {false, true}) {
             const auto serial = run_primal(in, cache, 1);
             for (int threads : {2, 4, 8}) {
                 INFO("input=" << in.name << " res=" << in.res << " threads=" << threads
-                     << " cache=" << int(cache));
+                     << " cache=" << cache);
                 const auto par = run_primal(in, cache, threads);
                 REQUIRE(par.non_zero_tets   == serial.non_zero_tets);
                 REQUIRE(par.non_even_tets   == serial.non_even_tets);
@@ -410,11 +410,11 @@ TEST_CASE("Threads: primal output is bit-identical regardless of thread count",
 TEST_CASE("Threads: dual output is bit-identical regardless of thread count",
           "[parity][threads]") {
     for (const auto& in : parity_inputs()) {
-        for (QueryCache cache : {QueryCache::NONE, QueryCache::SLAB}) {
+        for (bool cache : {false, true}) {
             const auto serial = run_dual(in, cache, 1);
             for (int threads : {2, 8}) {
                 INFO("input=" << in.name << " res=" << in.res << " threads=" << threads
-                     << " cache=" << int(cache));
+                     << " cache=" << cache);
                 const auto par = run_dual(in, cache, threads);
                 REQUIRE(par.non_zero_tets   == serial.non_zero_tets);
                 REQUIRE(par.non_even_tets   == serial.non_even_tets);
@@ -439,7 +439,7 @@ TEST_CASE("Query cache: slab issues one query per unique grid edge",
         SDFQueryHandler handler("Sphere", 1e-2f);
 
       {
-        auto cache = make_edge_cache(QueryCache::SLAB, grid);
+        auto cache = make_edge_cache(true, grid);
         REQUIRE(cache != nullptr);
 
         std::array<std::vector<double>, 6> ts;

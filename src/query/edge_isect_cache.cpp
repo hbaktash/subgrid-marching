@@ -147,23 +147,13 @@ void SlabEdgeCache::query_tet(
 // ============================================================================
 
 std::unique_ptr<EdgeIsectCache> make_edge_cache(
-    QueryCache kind, const TetGridRange& range, int num_threads
+    bool enabled, const TetGridRange& range, int num_threads
 ){
-    switch (kind) {
-        case QueryCache::NONE:
-            return nullptr;
-        case QueryCache::SLAB:
-            return std::make_unique<SlabEdgeCache>(range, num_threads);
-    }
-    return nullptr;
+    return enabled ? std::make_unique<SlabEdgeCache>(range, num_threads) : nullptr;
 }
 
 std::unique_ptr<EdgeIsectCache> make_edge_cache(
-    QueryCache kind, const ExplicitTetRange& /*range*/, int /*num_threads*/
+    bool /*enabled*/, const ExplicitTetRange& /*range*/, int /*num_threads*/
 ){
-    if (kind == QueryCache::SLAB)
-        log_warn("query cache 'slab' needs the implicit grid's node planes and is "
-                 "ignored for explicit tet meshes, whose intersections are already "
-                 "precomputed per edge.");
-    return nullptr;
+    return nullptr;   // see the note in the header
 }
