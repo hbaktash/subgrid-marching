@@ -88,3 +88,4 @@ wheelhouse/
 # Full-resolution teaser sources; only the downscaled images/teaser.png is tracked.
 /images/CellTeaser-compressed.png
 /images/CellTeaser-compressed.pdf
+!/data/meshes/thin_lamp.obj
