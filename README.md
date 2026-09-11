@@ -173,9 +173,13 @@ The dual mesh is written to exactly the `-o` path.
 
 Opens a Polyscope GUI for building and visualizing normal surfaces inside a
 single tetrahedron. Sliders control normal coordinates (corner and diagonal
-cuts) and edge intersection counts directly.
+cuts) and edge intersection counts directly. See demo below:
 
-More complex configurations can be visualized with `ringTetSubgrid`, which shows four tets sharing an edge.
+![Interactive normal-surface editing in singleTetSubgrid](images/singletet_demo.gif)
+
+More complex and global configurations can be visualized with `ringTetSubgrid`, which shows four tets sharing an edge.
+
+
 
 ## Input preprocessing
 
