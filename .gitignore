@@ -85,6 +85,9 @@ wheelhouse/
 # Curated sample inputs under data/ are tracked despite the format rules above
 !/data/meshes/Track.stl
 
+# Local staging area for repo figures/exports — not tracked
+/data/for_repo/
+
 # Full-resolution teaser sources; only the downscaled images/teaser.png is tracked.
 /images/CellTeaser-compressed.png
 /images/CellTeaser-compressed.pdf
