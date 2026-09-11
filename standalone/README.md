@@ -30,6 +30,7 @@ Each returns a plain struct/dataclass with the locally-merged geometry
 a global mesh across many tets, merge vertices whose `signature_key(...)` match
 (a `None`/empty key means "never merge — allocate fresh"). See `examples/` for a
 ready-to-read global-merge snippet.
+You can ignore the `signature_key` machinery if you just want to generate a soup, and not a connected global manifold.
 
 ### C++
 
@@ -46,19 +47,6 @@ cd examples
 python3 primal_demo.py
 python3 dual_demo.py
 ```
-
-## What each thing is for
-
-| Path | Purpose | Ships with your copy? |
-|------|---------|-----------------------|
-| `cpp/subgrid_mt.hpp` | the C++ port | **yes — this is the product** |
-| `python/subgrid_mt.py` | the Python port | **yes — this is the product** |
-| `examples/` | tiny primal+dual demos incl. a cross-tet global-merge snippet | no (reference only) |
-| `verify/` | harnesses that check the ports against the repo core (C++ in-process + fixture-based for Python) | no |
-| `CMakeLists.txt` | self-contained project that builds **only** the verification harnesses | no |
-
-If you just want the algorithm, copy `cpp/subgrid_mt.hpp` **or**
-`python/subgrid_mt.py` and ignore everything else.
 
 ## Verifying
 
